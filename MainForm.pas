@@ -6,9 +6,10 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   System.Math.Vectors, System.Math,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Objects3D,
-  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts,
+  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts, Gorilla.Audio.FMOD,
   Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer,
-  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox;
+  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox,
+  System.SyncObjs; // für InterlockedCompareExchange
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
 const
@@ -88,6 +89,21 @@ type
     FAnimatedVelocities: TArray<TVector3D>; // Array für die Startgeschwindigkeiten
     FRemovedLines: TArray<Integer>; // Speichert die Y-Koordinaten der zu löschenden Zeilen
 
+    // Next-piece preview
+    FNextPieces: array[0..1] of TCellKind;
+    FPreviewCubes: array[0..1, 0..3] of TGorillaCube;
+
+    // Bag7 Randomizer
+    FBag: array[0..6] of TCellKind;
+    FBagIndex: Integer; // Index auf das nächste Element in der Bag (0..6)
+
+    // Music and effects
+    FAudioPlayer : TGorillaFMODAudioManager;
+
+    procedure ShuffleBag;
+    procedure RefillBag;
+    function DrawFromBag: TCellKind;
+
     function TryMove(dx,dy: Integer): Boolean;
     procedure InitBoard;
 
@@ -101,8 +117,12 @@ type
     procedure ClearLines;
     procedure StepGame;
     procedure UpdateStats;
+    procedure UpdatePreview;
 
     procedure DoOnTick(Sender: TObject);
+
+    procedure HandleGameOver; // zentrale, thread-sichere GameOver-Routine
+
   protected
     procedure CreateGorillaScene;
   public
@@ -124,7 +144,7 @@ const DropDelays: array[0..20] of Single =
   // (Werte aus original Tetris, für die Level 0-20)
 
 const
-  ActivePieceEmission = $55000000;
+  ActivePieceEmission = $33000000;
 
   PieceColors: array[TCellKind] of TAlphaColor =
     ($33CCCCCC, // None
@@ -318,11 +338,15 @@ begin
     // UND die Y-Koordinate noch in der "Startzone" ist (über dem Spielfeld)
     if (dy > 0) and (FCurrentPiece.Y < 0) then
     begin
-      FGameOver := True;
       // Aktive Würfel verstecken
       for var i := 0 to 3 do
-        FActiveCubes[i].Visible := False;
-      ShowMessage('Game Over!');
+        if Assigned(FActiveCubes[i]) then
+          FActiveCubes[i].Visible := False;
+
+      // Thread-sichere GameOver-Handling
+      HandleGameOver;
+      // wichtig: kein weiteres Fortfahren aus dieser Bewegung
+      Exit;
     end;
   end;
 end;
@@ -330,6 +354,13 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   Randomize;
+
+  FAudioPlayer := TGorillaFMODAudioManager.Create(Self);
+  FAudioPlayer.AutoUpdate := true;
+  var LSoundItem := FAudioPlayer.LoadSoundItemFromFile('tetris_style.wav');
+  LSoundItem.Loop := true;
+  LSoundItem.LoopCount := -1;
+  LSoundItem.Play();
 
   // Spielzustand initialisieren
   FScore := 0;
@@ -390,6 +421,15 @@ begin
 
   CreateGorillaScene;
   InitBoard;
+
+  // Bag7 initialisieren
+  RefillBag;
+
+  // Next-Pieces initialisieren aus Bag
+  FNextPieces[0] := DrawFromBag;
+  FNextPieces[1] := DrawFromBag;
+  UpdatePreview;
+
   SpawnPiece;
 
   UpdateStats; // Neue Prozedur zum Aktualisieren der Labels
@@ -397,6 +437,11 @@ begin
 end;
 
 procedure TForm1.CreateGorillaScene;
+var
+  leftBorder, rightBorder, backPlane: TGorillaCube;
+  borderMat, backMat: TGorillaDefaultMaterialSource;
+  borderThickness, backDepth: Single;
+  i: Integer;
 begin
   // Create a dummy as camera target at the board center
   FTarget := TDummy.Create(FGorilla);
@@ -413,30 +458,87 @@ begin
   FGorilla.Camera := FCamera;   // << link camera to viewport
   FGorilla.UsingDesignCamera := false;
 
-  for var i := 0 to 3 do
+  // --- Visual borders / background for board size ---
+  borderMat := TGorillaDefaultMaterialSource.Create(FGorilla);
+  borderMat.Parent := FGorilla;
+  borderMat.Diffuse := $88000000; // dunkel halbtransparent
+  borderMat.Emissive := $00000000;
+
+  backMat := TGorillaDefaultMaterialSource.Create(FGorilla);
+  backMat.Parent := FGorilla;
+  backMat.Diffuse := $44000088; // halbtransparent bläulich
+  backMat.Emissive := $00000000;
+
+  borderThickness := 0.25;
+  backDepth := 0.1;
+
+  leftBorder := TGorillaCube.Create(FGorilla);
+  leftBorder.Parent := FGorilla;
+  leftBorder.SetSize(borderThickness, ROWS + 0.5, 1.5);
+  leftBorder.Position.Point := Point3D(-0.5, (ROWS / 2) - 0.5, 0);
+  leftBorder.MaterialSource := borderMat;
+  leftBorder.SetOpacityValue(0.6);
+  leftBorder.Visible := True;
+
+  rightBorder := TGorillaCube.Create(FGorilla);
+  rightBorder.Parent := FGorilla;
+  rightBorder.SetSize(borderThickness, ROWS + 0.5, 1.5);
+  rightBorder.Position.Point := Point3D(COLS - 0.5, (ROWS / 2) - 0.5, 0);
+  rightBorder.MaterialSource := borderMat;
+  rightBorder.SetOpacityValue(0.6);
+  rightBorder.Visible := True;
+
+  backPlane := TGorillaCube.Create(FGorilla);
+  backPlane.Parent := FGorilla;
+  backPlane.SetSize(COLS + 2, ROWS + 2, backDepth);
+  backPlane.Position.Point := Point3D((COLS / 2) - 0.5, (ROWS / 2) - 0.5, -1);
+  backPlane.MaterialSource := backMat;
+  backPlane.SetOpacityValue(0.45);
+  backPlane.Visible := True;
+
+  // Create active & ghost cubes
+  for i := 0 to 3 do
   begin
     FActiveCubes[i] := TGorillaCube.Create(FGorilla);
     FActiveCubes[i].Parent := FGorilla;
     FActiveCubes[i].SetSize(0.98,0.98,0.98);
     FActiveCubes[i].Visible := False;
-    // Material wird in RedrawActive gesetzt
   end;
 
-// Erstelle die Ghost-Würfel
-  for var i := 0 to 3 do
+  for i := 0 to 3 do
   begin
     FGhostCubes[i] := TGorillaCube.Create(FGorilla);
     FGhostCubes[i].Parent := FGorilla;
     FGhostCubes[i].SetSize(0.98,0.98,0.98);
     FGhostCubes[i].Visible := False;
     FGhostCubes[i].SetOpacityValue(0.5);
-    // Setze ein Material mit geringer Leuchtkraft für den Ghost
     var mat := TGorillaDefaultMaterialSource.Create(FGorilla);
     mat.Parent := FGorilla;
     mat.Diffuse := $FF888888;
-    mat.Emissive := 0; // Ein heller, transparenter Schimmer
+    mat.Emissive := 0;
     FGhostCubes[i].MaterialSource := mat;
   end;
+
+  // --- Preview für die nächsten 2 Stücke ---
+  // Positioniert die Vorschau rechts außerhalb des Boards
+  for i := 0 to 1 do
+  begin
+    for var j := 0 to 3 do
+    begin
+      FPreviewCubes[i,j] := TGorillaCube.Create(FGorilla);
+      FPreviewCubes[i,j].Parent := FGorilla;
+      FPreviewCubes[i,j].SetSize(0.7, 0.7, 0.7); // etwas kleiner als Spielwürfel
+      FPreviewCubes[i,j].Visible := False;
+      // eigenes Material so dass die Vorschau dezenter ist
+      var pMat := TGorillaDefaultMaterialSource.Create(FGorilla);
+      pMat.Parent := FGorilla;
+      pMat.Diffuse := $FF0D1224;
+      pMat.Emissive := $00000000;
+      FPreviewCubes[i,j].MaterialSource := pMat;
+      FPreviewCubes[i,j].SetOpacityValue(0.85);
+    end;
+  end;
+
 end;
 
 procedure TForm1.UpdateStats;
@@ -451,8 +553,12 @@ const DT = 1/60;
 var
   i: Integer;
   pos: TVector3D;
+  x,y: Integer;
 begin
-(*
+  // Wenn GameOver gesetzt ist, keine Spiel-Logik mehr (aber noch Animation beenden lassen)
+  if FGameOver and not FIsAnimating then
+    Exit;
+
   // Wenn eine Animation läuft, nur diese verarbeiten
   if FIsAnimating then
   begin
@@ -463,19 +569,19 @@ begin
     begin
       if Assigned(FAnimatedCubes[i]) then
       begin
-        // Aktuelle Position
         pos := FAnimatedCubes[i].Position.Point;
-        // Position mit Geschwindigkeit aktualisieren
         pos.X := pos.X + FAnimatedVelocities[i].X * DT * 5;
         pos.Y := pos.Y + FAnimatedVelocities[i].Y * DT * 5;
         pos.Z := pos.Z + FAnimatedVelocities[i].Z * DT * 5;
         FAnimatedCubes[i].Position.Point := pos;
 
         // Skalierung verringern, um das Verschwinden zu simulieren
-        FAnimatedCubes[i].SetSize(FAnimatedCubes[i].Scale.X - DT * 1.5, FAnimatedCubes[i].Scale.Y - DT * 1.5, FAnimatedCubes[i].Scale.Z - DT * 1.5);
+        FAnimatedCubes[i].SetSize(Max(0.01, FAnimatedCubes[i].Scale.X - DT * 1.5),
+                                 Max(0.01, FAnimatedCubes[i].Scale.Y - DT * 1.5),
+                                 Max(0.01, FAnimatedCubes[i].Scale.Z - DT * 1.5));
 
         // Würfel langsam transparenter machen
-        FAnimatedCubes[i].SetOpacityValue(FAnimatedCubes[i].Opacity - DT * 2);
+        FAnimatedCubes[i].SetOpacityValue(Max(0, FAnimatedCubes[i].Opacity - DT * 2));
       end;
     end;
 
@@ -483,33 +589,64 @@ begin
     if FAnimationTimer >= 0.5 then // 0.5 Sekunden Explosionsdauer
     begin
       FIsAnimating := False;
+
+      // 1) Freigeben der animierten Würfel
+      for i := 0 to High(FAnimatedCubes) do
+      begin
+        if Assigned(FAnimatedCubes[i]) then
+        begin
+          try
+            FAnimatedCubes[i].Free;
+          except end;
+          FAnimatedCubes[i] := nil;
+        end;
+      end;
+      SetLength(FAnimatedCubes, 0);
+      SetLength(FAnimatedVelocities, 0);
+
+      // 2) Board nachrücken basierend auf FRemovedLines
+      if Length(FRemovedLines) > 0 then
+      begin
+        var yOffset := 0;
+        for y := ROWS - 1 downto 0 do
+        begin
+          var removed := False;
+          for var rl in FRemovedLines do if rl = y then begin removed := True; Break; end;
+
+          if removed then
+          begin
+            Inc(yOffset);
+            for x := 0 to COLS - 1 do
+              FBoard[y, x] := ckNone;
+          end
+          else if yOffset > 0 then
+          begin
+            for x := 0 to COLS - 1 do
+            begin
+              FBoard[y + yOffset, x] := FBoard[y, x];
+              FBoard[y, x] := ckNone;
+
+              if Assigned(FCubes[y, x]) then
+              begin
+                FCubes[y + yOffset, x] := FCubes[y, x];
+                FCubes[y + yOffset, x].Position.Point := Point3D(x, y + yOffset, 0);
+                FCubes[y, x] := nil;
+              end;
+            end;
+          end;
+        end;
+
+        SetLength(FRemovedLines, 0);
+      end;
+
+      // 3) Aktualisieren + neues Stück (sofern nicht GameOver)
       RedrawBoard;
       UpdateStats;
-      SpawnPiece;
+      if not FGameOver then
+        SpawnPiece;
     end;
+
     Exit; // Timer-Prozedur verlassen, um Gravitation zu überspringen
-  end;
-*)
-  // Animation beenden und Spielfeld aktualisieren, wenn der Timer abläuft
-  if FAnimationTimer >= 0.5 then
-  begin
-    FIsAnimating := False;
-
-    // Freigabe der animierten Würfel
-    for i := 0 to High(FAnimatedCubes) do
-    begin
-      if Assigned(FAnimatedCubes[i]) then
-      begin
-        FAnimatedCubes[i].Free;
-        FAnimatedCubes[i] := nil;
-      end;
-    end;
-    SetLength(FAnimatedCubes, 0);
-    SetLength(FAnimatedVelocities, 0);
-
-    RedrawBoard;
-    UpdateStats;
-    SpawnPiece;
   end;
 
   // --- Gravitations-Logik und DAS/ARR wie zuvor ---
@@ -629,35 +766,32 @@ end;
 
 procedure TForm1.SpawnPiece;
 begin
-  // TODO: später Bag7 – erstmal zufällig:
-  FCurrentPiece.Kind := TCellKind(Ord(ckI) + Random(7)); // ckI..ckL
+  if FGameOver then Exit;
+
+  // Nimm das nächste Piece aus der Vorschau (die Vorschau wurde aus der Bag gefüllt)
+  FCurrentPiece.Kind := FNextPieces[0];
+
+  // Schiebe die Queue: 1 -> 0, neue aus Bag in Slot 1
+  FNextPieces[0] := FNextPieces[1];
+  FNextPieces[1] := DrawFromBag;
+
+  UpdatePreview;
+
+  // restliche Initialisierung...
   FCurrentPiece.Matrix := PieceShapes[FCurrentPiece.Kind];
   FCurrentPiece.Rot := 0;
-  FCurrentPiece.X := (COLS div 2) - 2; // zentriert für 4x4-Matrix
-  FCurrentPiece.Y := -2;               // leicht über Feld
+  FCurrentPiece.X := (COLS div 2) - 2;
+  FCurrentPiece.Y := -2;
 
-  // **Game-Over-Erkennung**: Prüfe, ob das neue Stück kollidiert
   if Collides(FCurrentPiece.Matrix, FCurrentPiece.X, FCurrentPiece.Y, FBoard) then
   begin
-    FGameOver := True; // Setze den Game-Over-Status
-    ShowMessage('Game Over! Your Score: ' + IntToStr(FScore));
-
-    // Spielzustand zurücksetzen
-    FScore := 0;
-    FLevel := 0;
-    FLinesCleared := 0;
-    FDropDelay := DropDelays[0];
-
-    // Reset bei Game Over (einfach) – später schöner
-    FillChar(FBoard, SizeOf(FBoard), 0);
-    RedrawBoard;
-    UpdateStats;
-  end
-  else
-  begin
-    RedrawActive; // Zeichne nur, wenn das Spiel weitergeht
+    HandleGameOver;
+    Exit;
   end;
+
+  RedrawActive;
 end;
+
 
 procedure TForm1.StepGame;
 begin
@@ -678,11 +812,27 @@ procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; 
 begin
   if FGameOver and (Key = vkReturn) then // Beispiel: Neustart mit Enter
   begin
+    // Neustart-Flow: Spielfeld leeren, Status zurücksetzen, Timer ggf neu starten
     FGameOver := False;
+    FScore := 0;
+    FLevel := 0;
+    FLinesCleared := 0;
+    FDropDelay := DropDelays[0];
     FillChar(FBoard, SizeOf(FBoard), 0); // Spielfeld leeren
     RedrawBoard;
+    UpdateStats;
+
+    // Falls Timer gestoppt wurde, neu erstellen / starten
+    if Assigned(FTimer) and not FTimer.Started then
+    begin
+      FTimer := TGorillaTimer.Create;
+      FTimer.Interval := 16;
+      FTimer.OnTimer := DoOnTick;
+      FTimer.Start;
+    end;
+
     SpawnPiece;
-    Exit; // Beende die Prozedur, um andere Tastenbefehle zu ignorieren
+    Exit;
   end;
 
   case Key of
@@ -750,7 +900,6 @@ begin
   begin
     p := cells[i];
     FActiveCubes[i].Visible := True;
-    // Board-Koordinate -> 3D: oben = ROWS-1
     FActiveCubes[i].Position.Point :=
       Point3D(FCurrentPiece.X + p.X, (FCurrentPiece.Y + p.Y), 0);
 
@@ -759,7 +908,6 @@ begin
       mat := TGorillaDefaultMaterialSource.Create(FGorilla);
       mat.Parent := FGorilla;
       mat.Diffuse  := $FF0D1224;
-      // Emissive-Alpha = Intensität (~60%)
       mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
       FActiveCubes[i].MaterialSource := mat;
     end
@@ -787,9 +935,9 @@ begin
   end;
 
   // Aktive Würfel verstecken bis zum nächsten Teil
-  for i:=0 to 3 do FActiveCubes[i].Visible := False;
+  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then FActiveCubes[i].Visible := False;
   // Ghost-Würfel verstecken
-  for i := 0 to 3 do FGhostCubes[i].Visible := False;
+  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then FGhostCubes[i].Visible := False;
 
   RedrawBoard;
   ClearLines; // definiere unten
@@ -800,8 +948,6 @@ var
   y, x: Integer;
   full: Boolean;
   linesToClear: TArray<Integer>;
-  yOffset: Integer;
-  found: Boolean;
 begin
   SetLength(linesToClear, 0);
 
@@ -842,60 +988,8 @@ begin
         FDropDelay := DropDelays[FLevel];
     end;
 
-    // Schritt 3: Die Blöcke und die 3D-Würfel verschieben
-    yOffset := 0;
-    // Durchlaufe das Spielfeld von unten nach oben
-    for y := ROWS - 1 downto 0 do
-    begin
-      // Überprüfe, ob die aktuelle Zeile gelöscht wird
-      found := False;
-      for var clearedLine in linesToClear do
-      begin
-        if y = clearedLine then
-        begin
-          found := True;
-          Break;
-        end;
-      end;
-
-      if found then
-      begin
-        // Wenn die Zeile gelöscht wird, erhöhe den Offset
-        Inc(yOffset);
-        // Setze die Blöcke in dieser Zeile im FBoard und die 3D-Würfel zurück
-        for x := 0 to COLS - 1 do
-        begin
-          FBoard[y, x] := ckNone;
-          // Entferne den Würfel vollständig
-          if Assigned(FCubes[y,x]) then
-          begin
-            FCubes[y,x].Free;
-            FCubes[y,x] := nil;
-          end;
-        end;
-      end
-      else if yOffset > 0 then
-      begin
-        // Wenn die Zeile nicht gelöscht wird, aber ein Offset vorhanden ist,
-        // verschiebe die Zeile und den 3D-Würfel um den Offset nach unten
-        for x := 0 to COLS - 1 do
-        begin
-          // Verschiebe die logischen Daten im FBoard-Array
-          FBoard[y + yOffset, x] := FBoard[y, x];
-          FBoard[y, x] := ckNone;
-
-          // Verschiebe den 3D-Würfel im FCubes-Array und aktualisiere seine Position
-          if Assigned(FCubes[y, x]) then
-          begin
-            FCubes[y + yOffset, x] := FCubes[y, x];
-            FCubes[y + yOffset, x].Position.Y := y + yOffset;
-            FCubes[y, x] := nil; // Setze den alten Platz auf nil
-          end;
-        end;
-      end;
-    end;
-
-    // Schritt 4: Starte die Animation
+    // Speichere die zu löschenden Zeilen und starte Animation
+    FRemovedLines := Copy(linesToClear);
     StartLineClearAnimation(linesToClear);
   end
   else
@@ -944,28 +1038,144 @@ begin
   SetLength(FAnimatedVelocities, Length(Lines) * COLS);
 
   idx := 0;
-  for y := Low(Lines) to High(Lines) do
+  for y in Lines do
   begin
     for x := 0 to COLS - 1 do
     begin
-      // Holen Sie sich den Würfel, bevor er entfernt wird
       cube := FCubes[y, x];
       if Assigned(cube) and cube.Visible then
       begin
         FAnimatedCubes[idx] := cube;
-        // Zufällige Startgeschwindigkeit für eine Explosion
-        FAnimatedVelocities[idx] := Vector3D(RandomRange(-5, 5) / 10, RandomRange(-5, 5) / 10, RandomRange(5, 10) / 10);
+        FAnimatedVelocities[idx] := Vector3D(
+          (RandomRange(-50, 50) / 100),
+          (RandomRange(-80, -10) / 100),
+          (RandomRange(-30, 30) / 100)
+        );
         Inc(idx);
+      end;
+
+      // Referenz im Grid entfernen — das Objekt gehört nun der Animation
+      FCubes[y,x] := nil;
+      // FBoard bleibt bis zur Finalisierung bestehen oder wird dort gesetzt
+    end;
+  end;
+
+  SetLength(FAnimatedCubes, idx);
+  SetLength(FAnimatedVelocities, idx);
+end;
+
+procedure TForm1.HandleGameOver;
+begin
+  if FGameOver then Exit;
+
+  for var s := 0 to 1 do
+    for var c := 0 to 3 do
+      if Assigned(FPreviewCubes[s,c]) then
+        FPreviewCubes[s,c].Visible := False;
+
+  // Queue UI-Aufrufe in Main-Thread
+  TThread.Queue(nil,
+    procedure
+    var i: Integer;
+    begin
+      for i := 0 to 3 do
+        if Assigned(FActiveCubes[i]) then
+          try
+            FActiveCubes[i].Visible := False;
+          except end;
+
+      // Timer beenden, damit keine DoOnTick-Aufrufe mehr kommen
+      if Assigned(FTimer) and FTimer.Started then
+        FTimer.Terminate;
+
+      ShowMessage('Game Over! Your Score: ' + IntToStr(FScore));
+    end);
+end;
+
+procedure TForm1.UpdatePreview;
+var
+  slot, k: Integer;
+  cells: TArray<TPoint>;
+  p: TPoint;
+  baseX, baseY: Single;
+  col: TAlphaColor;
+  mat: TGorillaDefaultMaterialSource;
+begin
+  // Preview-Slots rechts neben dem Feld platzieren (außerhalb der rechten Border)
+  // Slot 0 oben, Slot 1 darunter
+  for slot := 0 to 1 do
+  begin
+    // Basis-Position für diesen Slot (anpassen wenn nötig)
+    baseX := COLS + 4 + (slot * 0); // gleiche X-Position; Y unterscheidet sich weiter unten
+    baseY := 2 + slot * 5; // Abstand zwischen Slot 0 und 1
+
+    // Berechne Zell-Offsets für das Piece (verwende die PieceMatrix)
+    cells := CellsOf(PieceShapes[FNextPieces[slot]]);
+
+    col := PieceColors[FNextPieces[slot]];
+    for k := 0 to 3 do
+    begin
+      p := cells[k];
+      // Positionierung: wir zentrieren jede 4x4-Matrix innerhalb eines kleinen Vorschau-Box
+      // Verschiebe X und Y so, dass es gut neben dem Grid steht
+      FPreviewCubes[slot,k].Visible := True;
+      FPreviewCubes[slot,k].Position.Point := Point3D(baseX + (p.X - 1.5), baseY + (p.Y - 1.0), 0);
+
+      // Materialfarbe / Emissive wie beim normalen Block (etwas weniger intensiv möglich)
+      mat := TGorillaDefaultMaterialSource(FPreviewCubes[slot,k].MaterialSource);
+      if Assigned(mat) then
+  //      mat.Emissive := (col and $00FFFFFF) or ($33000000) // leicht gedämpft
+      else
+      begin
+        mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+        mat.Parent := FGorilla;
+//        mat.Emissive := (col and $00FFFFFF) or ($33000000);
+        FPreviewCubes[slot,k].MaterialSource := mat;
       end;
     end;
   end;
-  SetLength(FAnimatedCubes, idx);
-  SetLength(FAnimatedVelocities, idx);
+end;
 
-  // Die Würfel in den gelöschten Zeilen nun aus dem FCubes-Array entfernen
-  for y := Low(Lines) to High(Lines) do
-    for x := 0 to COLS - 1 do
-      FCubes[y,x] := nil;
+procedure TForm1.ShuffleBag;
+var
+  i, j: Integer;
+  tmp: TCellKind;
+begin
+  // Fisher-Yates Shuffle für die 7 Elemente
+  for i := 6 downto 1 do
+  begin
+    j := Random(i + 1); // 0..i
+    tmp := FBag[i];
+    FBag[i] := FBag[j];
+    FBag[j] := tmp;
+  end;
+end;
+
+procedure TForm1.RefillBag;
+var
+  i: Integer;
+begin
+  // Fülle Bag mit den 7 Tetromino-Typen (ckI..ckL)
+  for i := 0 to 6 do
+    FBag[i] := TCellKind(Ord(ckI) + i);
+  // Mische
+  ShuffleBag;
+  FBagIndex := 0;
+end;
+
+function TForm1.DrawFromBag: TCellKind;
+begin
+  // Wenn Bag leer (Index > 6), refill
+  if FBagIndex > 6 then
+    RefillBag;
+
+  Result := FBag[FBagIndex];
+  Inc(FBagIndex);
+
+  // Wenn wir gerade das letzte Element herausgenommen haben,
+  // bereite sofort eine neue Bag vor (optional)
+  if FBagIndex > 6 then
+    RefillBag;
 end;
 
 end.
