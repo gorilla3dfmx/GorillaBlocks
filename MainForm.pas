@@ -4,12 +4,13 @@ interface
 
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
-  System.Math.Vectors, System.Math,
+  System.Math.Vectors, System.Math, System.IOUtils, FMX.Types3D,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Objects3D,
   FMX.Controls3D, FMX.StdCtrls, FMX.Layouts, Gorilla.Audio.FMOD,
-  Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer,
-  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox,
-  System.SyncObjs; // für InterlockedCompareExchange
+  Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer, Gorilla.Light,
+  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
+  Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn,
+  System.SyncObjs, FMX.Objects, FMX.Controls.Presentation, FMX.Gestures;
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
 const
@@ -34,6 +35,16 @@ type
   TCubes = array[0..ROWS-1, 0..COLS-1] of TGorillaCube;
 
   TForm1 = class(TForm)
+    Image1: TImage;
+    Image2: TImage;
+    Image3: TImage;
+    Rectangle1: TRectangle;
+    ScoreLabel: TLabel;
+    LevelLabel: TLabel;
+    LinesLabel: TLabel;
+    Image4: TImage;
+    FinalScoreLabel: TLabel;
+    GestureManager1: TGestureManager;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
@@ -42,9 +53,11 @@ type
   private
     FGorilla : TGorillaViewport;
     FTimer   : TGorillaTimer;
+    FAssetsPath : String;
 
     FTarget  : TDummy;
     FCamera  : TGorillaCamera;
+    FLight   : TGorillaLight;
 
     FBoard : TBoard;
     FCubes : TCubes;
@@ -54,6 +67,7 @@ type
     FLeftHeld,
     FDownHeld,
     FRightHeld: Boolean;
+    FHardDrop: Boolean;
     FLastMove:TDateTime;
     FCurrentPiece:TPiece;
 
@@ -100,6 +114,22 @@ type
     // Music and effects
     FAudioPlayer : TGorillaFMODAudioManager;
 
+    // --- Shake-Animation für HardDrop ---
+    FIsShaking: Boolean;
+    FShakeTimer: Single;
+    FShakeDuration: Single;
+    FShakeOscillations: Integer; // wie oft schwingt es hin und her
+    FShakingCubes: TArray<TGorillaCube>;
+    FShakeOrigPos: TArray<TVector3D>;
+    FShakeAmplitudes: TArray<TVector3D>;
+    FShakeBaseFreqs: TArray<TVector3D>;
+
+    // --- Camera Shake ---
+    FCameraOrigPos: TVector3D;
+    FCameraShakeEnabled: Boolean;
+    FCameraShakeAmplitude: TVector3D;
+    FCameraShakeBaseFreq: TVector3D;
+
     procedure ShuffleBag;
     procedure RefillBag;
     function DrawFromBag: TCellKind;
@@ -118,6 +148,7 @@ type
     procedure StepGame;
     procedure UpdateStats;
     procedure UpdatePreview;
+    procedure StartShakeBoard;
 
     procedure DoOnTick(Sender: TObject);
 
@@ -144,17 +175,17 @@ const DropDelays: array[0..20] of Single =
   // (Werte aus original Tetris, für die Level 0-20)
 
 const
-  ActivePieceEmission = $33000000;
+  ActivePieceEmission = $55000000;
 
   PieceColors: array[TCellKind] of TAlphaColor =
-    ($33CCCCCC, // None
-     $3300FFFF, // Cyan
-     $33FFFF00, // Gelb
-     $338000FF, // Lila
-     $3300FF00, // Grün
-     $33FF0000, // Rot
-     $330000FF, // Blau
-     $33FFA500 // Orange
+    ($44CCCCCC, // None
+     $448ecae6, // Cyan
+     $44ffee32, // Gelb
+     $44c86bfa, // Lila
+     $4490be6d, // Grün
+     $44f94144, // Rot
+     $44abc4ff, // Blau
+     $44f8961e // Orange
      );
 
 const
@@ -355,9 +386,19 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   Randomize;
 
+{$IFDEF MSWINDOWS}
+  FAssetsPath := '';
+{$ENDIF}
+{$IFDEF LINUX}
+  FAssetsPath := '';
+{$ENDIF}
+{$IFDEF ANDROID}
+  FAssetsPath := IncludeTrailingPathDelimiter(System.IOUtils.TPath.GetHomePath());
+{$ENDIF}
+
   FAudioPlayer := TGorillaFMODAudioManager.Create(Self);
   FAudioPlayer.AutoUpdate := true;
-  var LSoundItem := FAudioPlayer.LoadSoundItemFromFile('tetris_style.wav');
+  var LSoundItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'tetris_style.wav');
   LSoundItem.Loop := true;
   LSoundItem.LoopCount := -1;
   LSoundItem.Play();
@@ -377,6 +418,17 @@ begin
   FIsInitialMove := False;
   FGameOver := False; // << Spielstart: Nicht Game Over
 
+  FIsShaking := False;
+  FShakeTimer := 0;
+  FShakeDuration := 0.5;
+  FShakeOscillations := 4;
+
+  // Camera-Shake default einschalten (kann später ausgeschaltet werden)
+  FCameraShakeEnabled := True;
+  // Standard-Amplitude: etwas kleiner als Würfel-Amplitude, kann angepasst werden
+  FCameraShakeAmplitude := Vector3D(0.25, 0.25, 0.0); // X,Y,Z in scene units
+  FCameraShakeBaseFreq := Vector3D(1.0, 1.2, 0.9);    // Basisfrequenzen (multipliziert mit Oscillations)
+
   // create viewport at runtime and fill the form
   FGorilla := TGorillaViewport.Create(Self);
   FGorilla.Parent := Self;
@@ -386,6 +438,40 @@ begin
 
   var LSkyBox := TGorillaSkyBox.Create(FGorilla);
   LSkyBox.Parent := FGorilla;
+  LSkyBox.Size := Point3D(50, 50, 50);
+  LSkyBox.Mode := TGorillaSkyBoxMode.CubeMapSkyBox;
+  LSkyBox.FrontSide.LoadFromFile(FAssetsPath + 'SkyBox.png');
+
+  var LFloor := TGorillaPlane.Create(FGorilla);
+  LFloor.Parent := FGorilla;
+  LFloor.RotationAngle.X := 90;
+  LFloor.SetSize(50, 50, 1);
+  LFloor.Position.Y := 20;
+
+  // Ein Untergrund mit bewegender Textur, die stets durchläuft
+  var LFloorMat := TGorillaLambertMaterialSource.Create(LFloor);
+  LFloorMat.Parent := LFloor;
+  LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
+  LFloorMat.MeasureTime := true;
+  LFloorMat.ShadingIntensity := 2;
+  var LStr := TStringList.Create();
+  try
+    LStr.Text :=
+      '''
+      void SurfaceShader(inout TLocals DATA){
+        vec2 l_TexOfs = DATA.TexCoord0.xy;
+
+        float iTime = mod(mod(_TimeInfo.y, 360.0) * 0.1, 0.5);
+        l_TexOfs += vec2(0.0, iTime);
+        DATA.BaseColor.rgb = tex2D(_Texture0, l_TexOfs).rgb;
+      }
+      ''';
+    LFloorMat.SurfaceShader := LStr;
+  finally
+    FreeAndNil(LStr);
+  end;
+
+  LFloor.MaterialSource := LFloorMat;
 
   // manual rendering via GorillaTimer (fixed ~60 fps)
   FTimer := TGorillaTimer.Create;
@@ -393,31 +479,13 @@ begin
   FTimer.OnTimer := DoOnTick;
   FTimer.Start;
 
-  // UI-Labels erstellen
-  FScoreLabel := TLabel.Create(FGorilla);
-  FScoreLabel.Parent := FGorilla;
-  FScoreLabel.Align := TAlignLayout.Top;
-  FScoreLabel.Margins.Left := 10;
-  FScoreLabel.TextSettings.Font.Size := 14;
-  FScoreLabel.TextSettings.Font.Style := [TFontStyle.fsBold];
-  FScoreLabel.TextSettings.Font.Family := 'Arial';
-  FScoreLabel.TextSettings.FontColor := TAlphaColors.White;
+  Rectangle1.Parent := FGorilla;
+  FScoreLabel := ScoreLabel;
+  FLevelLabel := LevelLabel;
+  FLinesLabel := LinesLabel;
 
-  FLevelLabel := TLabel.Create(FGorilla);
-  FLevelLabel.Parent := FGorilla;
-  FLevelLabel.Align := TAlignLayout.Top;
-  FLevelLabel.Margins.Left := 10;
-  FLevelLabel.Margins.Top := 30;
-  FLevelLabel.TextSettings.Font.Size := 14;
-  FLevelLabel.TextSettings.FontColor := TAlphaColors.White;
-
-  FLinesLabel := TLabel.Create(FGorilla);
-  FLinesLabel.Parent := FGorilla;
-  FLinesLabel.Align := TAlignLayout.Top;
-  FLinesLabel.Margins.Left := 10;
-  FLinesLabel.Margins.Top := 50;
-  FLinesLabel.TextSettings.Font.Size := 14;
-  FLinesLabel.TextSettings.FontColor := TAlphaColors.White;
+  Image4.Parent := FGorilla;
+  Image4.Visible := false;
 
   CreateGorillaScene;
   InitBoard;
@@ -458,15 +526,22 @@ begin
   FGorilla.Camera := FCamera;   // << link camera to viewport
   FGorilla.UsingDesignCamera := false;
 
+  // Merke die Originalposition der Kamera für Shake-Restore
+  FCameraOrigPos := FCamera.Position.Point;
+
+  FLight := TGorillaLight.Create(FCamera);
+  FLight.Parent := FCamera;
+  FLight.LightType := TLightType.Point;
+
   // --- Visual borders / background for board size ---
   borderMat := TGorillaDefaultMaterialSource.Create(FGorilla);
   borderMat.Parent := FGorilla;
-  borderMat.Diffuse := $88000000; // dunkel halbtransparent
+  borderMat.Diffuse := $55094e86; // dunkel halbtransparent
   borderMat.Emissive := $00000000;
 
   backMat := TGorillaDefaultMaterialSource.Create(FGorilla);
   backMat.Parent := FGorilla;
-  backMat.Diffuse := $44000088; // halbtransparent bläulich
+  backMat.Diffuse := $55094e86; // halbtransparent bläulich
   backMat.Emissive := $00000000;
 
   borderThickness := 0.25;
@@ -512,10 +587,11 @@ begin
     FGhostCubes[i].SetSize(0.98,0.98,0.98);
     FGhostCubes[i].Visible := False;
     FGhostCubes[i].SetOpacityValue(0.5);
-    var mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+    var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
     mat.Parent := FGorilla;
     mat.Diffuse := $FF888888;
     mat.Emissive := 0;
+    mat.UseTexture0 := false;
     FGhostCubes[i].MaterialSource := mat;
   end;
 
@@ -527,12 +603,15 @@ begin
     begin
       FPreviewCubes[i,j] := TGorillaCube.Create(FGorilla);
       FPreviewCubes[i,j].Parent := FGorilla;
-      FPreviewCubes[i,j].SetSize(0.7, 0.7, 0.7); // etwas kleiner als Spielwürfel
+      FPreviewCubes[i,j].SetSize(0.5, 0.5, 0.5); // etwas kleiner als Spielwürfel
       FPreviewCubes[i,j].Visible := False;
       // eigenes Material so dass die Vorschau dezenter ist
       var pMat := TGorillaDefaultMaterialSource.Create(FGorilla);
       pMat.Parent := FGorilla;
-      pMat.Diffuse := $FF0D1224;
+      pMat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+      pMat.UseLighting := true;
+      pMat.UseSpecular := true;
+      pMat.Diffuse := $FF5D41DF;
       pMat.Emissive := $00000000;
       FPreviewCubes[i,j].MaterialSource := pMat;
       FPreviewCubes[i,j].SetOpacityValue(0.85);
@@ -562,6 +641,14 @@ begin
   // Wenn eine Animation läuft, nur diese verarbeiten
   if FIsAnimating then
   begin
+    // Free the previously loaded item
+    var LPrevItem := FAudioPlayer.GetSoundItemByFilename(FAssetsPath + 'row_clear.wav');
+    if Assigned(LPrevItem) then
+      FAudioPlayer.Sounds.Delete(LPrevItem.Index);
+
+    var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'row_clear.wav');
+    LItem.Play;
+
     FAnimationTimer := FAnimationTimer + DT;
 
     // Animation der explodierenden Würfel
@@ -649,8 +736,105 @@ begin
     Exit; // Timer-Prozedur verlassen, um Gravitation zu überspringen
   end;
 
+  // --- Shake-Animation verarbeiten (HardDrop) ---
+  if FIsShaking then
+  begin
+    // Free the previously loaded item
+    var LPrevItem := FAudioPlayer.GetSoundItemByFilename(FAssetsPath + 'harddrop_thud.wav');
+    if Assigned(LPrevItem) then
+      FAudioPlayer.Sounds.Delete(LPrevItem.Index);
+
+    var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'harddrop_thud.wav');
+    LItem.Play;
+
+    FShakeTimer := FShakeTimer + DT;
+    var t := FShakeTimer / FShakeDuration;
+    if t > 1 then t := 1;
+
+    // Dämpfungsfaktor: sanftes Abklingen (benutze quadratische Dämpfung für weicheres Ende)
+    var damp := (1 - t) * (1 - t); // quadratisch -> langsameres Ausklingen
+
+    // Für mehrere Hin-/Her-Schwingungen verwenden wir:
+    // angle = 2*pi * Oscillations * t * baseFreqMultiplier
+    // wobei baseFreq pro-Würfel variiert (FShakeBaseFreqs)
+    for i := 0 to High(FShakingCubes) do
+    begin
+      if Assigned(FShakingCubes[i]) then
+      begin
+        var orig := FShakeOrigPos[i];
+        var amp := FShakeAmplitudes[i];
+        var bf := FShakeBaseFreqs[i];
+
+        // Berechne Winkelfortschritt: 2*pi * Osc * (t) * baseFreq
+        // t ist 0..1 über die ganze Dauer -> so entstehen exakt FShakeOscillations Zyklen
+        var angleX := 2 * Pi * (FShakeOscillations * t) * bf.X;
+        var angleY := 2 * Pi * (FShakeOscillations * t) * bf.Y;
+        var angleZ := 2 * Pi * (FShakeOscillations * t) * bf.Z;
+
+        // Sinus-basiertes Hin/Her, mit Dämpfung multipliziert
+        var ox := Sin(angleX) * amp.X * damp;
+        var oy := Sin(angleY) * amp.Y * damp;
+        var oz := Sin(angleZ) * amp.Z * damp;
+
+        FShakingCubes[i].Position.Point := Point3D(orig.X + ox, orig.Y + oy, orig.Z + oz);
+      end;
+    end;
+
+    // --- Kamera synchron zum Block-Shake bewegen ---
+    if FCameraShakeEnabled and Assigned(FCamera) then
+    begin
+      // Wir verwenden denselben t (0..1) und damp-Faktor wie bei den Würfeln
+      // angle = 2*pi * Oscillations * t * baseFreq
+      var camAngleX := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.X;
+      var camAngleY := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.Y;
+      var camAngleZ := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.Z;
+
+      // Sinus-basiertes Offset
+      var camOx := Sin(camAngleX) * FCameraShakeAmplitude.X * damp;
+      var camOy := Sin(camAngleY) * FCameraShakeAmplitude.Y * damp;
+      var camOz := Sin(camAngleZ) * FCameraShakeAmplitude.Z * damp;
+
+      // Setze die Kamera-Position relativ zur Originalposition
+      FCamera.Position.Point := Point3D(FCameraOrigPos.X + camOx,
+                                        FCameraOrigPos.Y + camOy,
+                                        FCameraOrigPos.Z + camOz);
+    end;
+
+    // Ende der Animation: Positionen wiederherstellen und Lines löschen/weiter
+    if FShakeTimer >= FShakeDuration then
+    begin
+      for i := 0 to High(FShakingCubes) do
+      begin
+        if Assigned(FShakingCubes[i]) then
+        begin
+          var p := FShakeOrigPos[i];
+          FShakingCubes[i].Position.Point := Point3D(Round(p.X), Round(p.Y), Round(p.Z));
+        end;
+      end;
+
+      // Aufräumen der Shake-Arrays
+      SetLength(FShakingCubes, 0);
+      SetLength(FShakeOrigPos, 0);
+      SetLength(FShakeAmplitudes, 0);
+      SetLength(FShakeBaseFreqs, 0);
+      FIsShaking := False;
+      FShakeTimer := 0;
+
+      // Jetzt Lines prüfen / löschen (das war im LockPiece ursprünglich geplant)
+      ClearLines;
+
+      // Restore camera exact
+      if FCameraShakeEnabled and Assigned(FCamera) then
+      begin
+        FCamera.Position.Point := Point3D(Round(FCameraOrigPos.X), Round(FCameraOrigPos.Y), Round(FCameraOrigPos.Z));
+      end;
+    end;
+
+    Exit; // Während Shake keine andere Spiel-Logik ausführen
+  end;
+
   // --- Gravitations-Logik und DAS/ARR wie zuvor ---
-  if FDownHeld then
+  if FDownHeld or FHardDrop then
   begin
     if not TryMove(0,1) then
       LockPiece;
@@ -703,7 +887,9 @@ begin
 end;
 
 procedure TForm1.InitBoard;
-var x,y: Integer; cube: TGorillaCube; mat: TGorillaDefaultMaterialSource;
+var x,y: Integer;
+    cube: TGorillaCube;
+    mat: TGorillaDefaultMaterialSource;
 begin
   for y := 0 to ROWS-1 do
     for x := 0 to COLS-1 do
@@ -715,7 +901,11 @@ begin
       cube.Position.Point := Point3D(x, y, 0);
       cube.SetSize(0.94,0.94,0.94);
 
-      mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+      mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+      mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+      mat.UseLighting := true;
+      mat.UseSpecular := true;
+      mat.UseTexture0 := false;
       mat.Parent := FGorilla;
       mat.Diffuse  := $FF0D1224;   // dunkel
       mat.Emissive := $00000000;   // aus
@@ -747,9 +937,13 @@ begin
         mat := TGorillaDefaultMaterialSource(FCubes[y,x].MaterialSource);
         if not Assigned(mat) then
         begin
-          mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+          mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+          mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+          mat.UseLighting := true;
+          mat.UseSpecular := true;
+          mat.UseTexture0 := false;
           mat.Parent := FGorilla;
-          mat.Diffuse  := $FF0D1224;
+          mat.Diffuse  := $FFFD1224;
           FCubes[y,x].MaterialSource := mat;
         end;
         mat.Emissive := PieceColors[FBoard[y,x]];
@@ -835,6 +1029,9 @@ begin
     Exit;
   end;
 
+  if FHardDrop then
+    Exit;
+
   case Key of
     vkLeft:
       begin
@@ -853,10 +1050,13 @@ begin
     vkUp: begin RotatePiece(FCurrentPiece, +1, FBoard); RedrawActive; end;
     vkZ: begin RotatePiece(FCurrentPiece, -1, FBoard); RedrawActive; end;
 
-    vkSpace: begin // Hard Drop
-      while TryMove(0,1) do ;
-      LockPiece;
-    end;
+    0,
+    vkSpace:
+      begin // Hard Drop
+        FHardDrop := true;
+//        while TryMove(0,1) do ;
+//        LockPiece;
+      end;
   end;
 end;
 
@@ -905,7 +1105,11 @@ begin
 
     if not Assigned(FActiveCubes[i].MaterialSource) then
     begin
-      mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+      mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+      mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+      mat.UseLighting := true;
+      mat.UseSpecular := true;
+      mat.UseTexture0 := false;
       mat.Parent := FGorilla;
       mat.Diffuse  := $FF0D1224;
       mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
@@ -921,11 +1125,14 @@ begin
   RedrawGhost;
 end;
 
+(*
 procedure TForm1.LockPiece;
 var cells: TArray<TPoint>;
     p: TPoint;
     i: Integer;
 begin
+  FHardDrop := false;
+
   cells := CellsOf(FCurrentPiece.Matrix);
   for i:=0 to 3 do
   begin
@@ -939,8 +1146,54 @@ begin
   // Ghost-Würfel verstecken
   for i := 0 to 3 do if Assigned(FGhostCubes[i]) then FGhostCubes[i].Visible := False;
 
+  // TODO: shaking animation
+  if FHardDrop then
+  begin
+    RedrawBoard;
+    ClearLines; // definiere unten
+  end
+  else
+  begin
+    RedrawBoard;
+    ClearLines; // definiere unten
+  end;
+end;
+*)
+procedure TForm1.LockPiece;
+var cells: TArray<TPoint>;
+    p: TPoint;
+    i: Integer;
+    WasHardDrop: Boolean;
+begin
+  WasHardDrop := FHardDrop; // merken, ob der Lock durch HardDrop initiiert wurde
+  FHardDrop := False;
+
+  cells := CellsOf(FCurrentPiece.Matrix);
+  for i:=0 to 3 do
+  begin
+    p := cells[i];
+    if FCurrentPiece.Y + p.Y >= 0 then
+      FBoard[FCurrentPiece.Y + p.Y, FCurrentPiece.X + p.X] := FCurrentPiece.Kind;
+  end;
+
+  // Aktive Würfel verstecken bis zum nächsten Teil
+  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then FActiveCubes[i].Visible := False;
+  // Ghost-Würfel verstecken
+  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then FGhostCubes[i].Visible := False;
+
+  // Board neu zeichnen (damit FCubes existieren / sichtbar sind)
   RedrawBoard;
-  ClearLines; // definiere unten
+
+  // Wenn es ein HardDrop war => Shake-Animation starten und ClearLines nach Ende der Animation ausführen.
+  if WasHardDrop then
+  begin
+    StartShakeBoard;
+  end
+  else
+  begin
+    // normales Verhalten: sofort Linien prüfen / löschen
+    ClearLines;
+  end;
 end;
 
 procedure TForm1.ClearLines;
@@ -1047,9 +1300,9 @@ begin
       begin
         FAnimatedCubes[idx] := cube;
         FAnimatedVelocities[idx] := Vector3D(
-          (RandomRange(-50, 50) / 100),
-          (RandomRange(-80, -10) / 100),
-          (RandomRange(-30, 30) / 100)
+          (RandomRange(-200, 200) / 100),
+          (RandomRange(50, 200) / 100),
+          (RandomRange(-200, 200) / 100)
         );
         Inc(idx);
       end;
@@ -1088,7 +1341,8 @@ begin
       if Assigned(FTimer) and FTimer.Started then
         FTimer.Terminate;
 
-      ShowMessage('Game Over! Your Score: ' + IntToStr(FScore));
+      FinalScoreLabel.Text := IntToStr(FScore);
+      Image4.Visible := true;
     end);
 end;
 
@@ -1106,8 +1360,8 @@ begin
   for slot := 0 to 1 do
   begin
     // Basis-Position für diesen Slot (anpassen wenn nötig)
-    baseX := COLS + 4 + (slot * 0); // gleiche X-Position; Y unterscheidet sich weiter unten
-    baseY := 2 + slot * 5; // Abstand zwischen Slot 0 und 1
+    baseX := COLS + 3 + (slot * 0); // gleiche X-Position; Y unterscheidet sich weiter unten
+    baseY := 18 + slot * 2; // Abstand zwischen Slot 0 und 1
 
     // Berechne Zell-Offsets für das Piece (verwende die PieceMatrix)
     cells := CellsOf(PieceShapes[FNextPieces[slot]]);
@@ -1119,7 +1373,8 @@ begin
       // Positionierung: wir zentrieren jede 4x4-Matrix innerhalb eines kleinen Vorschau-Box
       // Verschiebe X und Y so, dass es gut neben dem Grid steht
       FPreviewCubes[slot,k].Visible := True;
-      FPreviewCubes[slot,k].Position.Point := Point3D(baseX + (p.X - 1.5), baseY + (p.Y - 1.0), 0);
+      FPreviewCubes[slot,k].Position.Point :=
+        Point3D(baseX + (p.X * 0.5 - 1.5), baseY + (p.Y * 0.5 - 1.0), 0);
 
       // Materialfarbe / Emissive wie beim normalen Block (etwas weniger intensiv möglich)
       mat := TGorillaDefaultMaterialSource(FPreviewCubes[slot,k].MaterialSource);
@@ -1128,6 +1383,9 @@ begin
       else
       begin
         mat := TGorillaDefaultMaterialSource.Create(FGorilla);
+        mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+        mat.UseLighting := true;
+        mat.UseSpecular := true;
         mat.Parent := FGorilla;
 //        mat.Emissive := (col and $00FFFFFF) or ($33000000);
         FPreviewCubes[slot,k].MaterialSource := mat;
@@ -1177,5 +1435,88 @@ begin
   if FBagIndex > 6 then
     RefillBag;
 end;
+
+procedure TForm1.StartShakeBoard;
+var
+  y, x, idx: Integer;
+  cube: TGorillaCube;
+  amp, baseFreq: TVector3D;
+begin
+  // Parameter: Dauer und Anzahl der kompletten Schwingungen (Hin+Her = 1 Oscillation)
+  FShakeDuration := 0.5;      // Gesamtdauer in Sekunden (länger, damit mehrere Schwingungen sichtbar sind)
+  FShakeOscillations := 4;    // Anzahl voller Hin-/Her-Schwingungen
+  FShakeTimer := 0;
+  FIsShaking := True;
+
+  // Sammle alle sichtbaren/abgelegten Würfel in ein Array
+  SetLength(FShakingCubes, 0);
+  for y := 0 to ROWS - 1 do
+    for x := 0 to COLS - 1 do
+      if (FBoard[y,x] <> ckNone) and Assigned(FCubes[y,x]) and FCubes[y,x].Visible then
+      begin
+        idx := Length(FShakingCubes);
+        SetLength(FShakingCubes, idx + 1);
+        FShakingCubes[idx] := FCubes[y,x];
+      end;
+
+  // Reserve helper arrays
+  SetLength(FShakeOrigPos, Length(FShakingCubes));
+  SetLength(FShakeAmplitudes, Length(FShakingCubes));
+  SetLength(FShakeBaseFreqs, Length(FShakingCubes));
+
+  // Fill start values: origin, amplitude, base frequency
+  for idx := 0 to High(FShakingCubes) do
+  begin
+    cube := FShakingCubes[idx];
+    if Assigned(cube) then
+    begin
+      // original position merken
+      FShakeOrigPos[idx] := cube.Position.Point;
+
+      // amplituden: etwas zufällig, ggf. vom Benutzer hochskaliert (du hast *3 verwendet)
+      amp := Vector3D(
+        (RandomRange(8, 36) / 100.0),  // X-Amplitude (0.08..0.36)
+        (RandomRange(4, 18) / 100.0),  // Y-Amplitude
+        (RandomRange(0, 12) / 100.0)   // Z-Amplitude
+      );
+      // Optional: hier die Werte um 3 multiplizieren, wenn du es extra stark willst:
+      // amp := Vector3D(amp.X * 3, amp.Y * 3, amp.Z * 3);
+      FShakeAmplitudes[idx] := amp;
+
+      // Basisfrequenz in Hz (wird zusammen mit FShakeOscillations verwendet)
+      // Wir wählen moderate Basen, Variation pro Würfel
+      baseFreq := Vector3D(
+        RandomRange(8, 14) / 10.0, // 0.8..1.4
+        RandomRange(8, 14) / 10.0,
+        RandomRange(8, 14) / 10.0
+      );
+      // Wenn du bereits überall *3 multipliziert hast, das ergibt stärkere, schnellere Bewegung.
+      // baseFreq := baseFreq * 3; // falls gewünscht (du hattest x3)
+      FShakeBaseFreqs[idx] := baseFreq;
+    end;
+  end;
+
+  // Optionale Kameravariation pro-Shake: leichte Zufallskomponenten
+  if FCameraShakeEnabled and Assigned(FCamera) then
+  begin
+    // Merke die Originalposition (erneut, falls sie sich zwischen Spawns verändert hat)
+    FCameraOrigPos := FCamera.Position.Point;
+
+    // Optional: leichte zufällige Skalierung der Kamera-Amplitude (Variation)
+    FCameraShakeAmplitude := Vector3D(
+      FCameraShakeAmplitude.X * (0.9 + RandomRange(0,20)/100),
+      FCameraShakeAmplitude.Y * (0.9 + RandomRange(0,20)/100),
+      FCameraShakeAmplitude.Z
+    );
+
+    // Optional: Basisfrequenzen leicht variieren
+    FCameraShakeBaseFreq := Vector3D(
+      FCameraShakeBaseFreq.X * (0.9 + RandomRange(0,20)/100),
+      FCameraShakeBaseFreq.Y * (0.9 + RandomRange(0,20)/100),
+      FCameraShakeBaseFreq.Z
+    );
+  end;
+end;
+
 
 end.
