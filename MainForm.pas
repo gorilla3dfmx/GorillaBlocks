@@ -14,8 +14,10 @@ uses
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
 const
-  COLS = 10;
-  ROWS = 20;
+  ROWS       = 20;   // Anzahl Reihen im Spielfeld
+  COLS       = 10;   // Anzahl Spalten im Spielfeld
+  CUBE_SIZE  = 1.0;  // Kantenlänge eines Blocks in deiner 3D-Szene
+  CUBE_SPACE = 0.05; // kleiner Abstand zwischen den Blöcken
 
 type
   TCellKind = (ckNone, ckI, ckO, ckT, ckS, ckZ, ckJ, ckL);
@@ -77,8 +79,8 @@ type
     FGhostCubes : array[0..3] of TGorillaCube;
 
     // Gravitation
-    FDropTimer : Single;   // Sek. seit letztem Fall
-    FDropDelay : Single;   // Sek. pro Zeile (Levelgeschwindigkeit)
+    FPieceDropTimer : Single;   // Sek. seit letztem Fall
+    FPieceDropDelay : Single;   // Sek. pro Zeile (Levelgeschwindigkeit)
 
     // Zusätzliche Variablen für DAS/ARR
     FMoveTimer : Single; // Timer für horizontale Bewegung
@@ -130,6 +132,15 @@ type
     FCameraShakeAmplitude: TVector3D;
     FCameraShakeBaseFreq: TVector3D;
 
+    // --- Drop-Animation nach Line Clear ---
+    FIsDropping: Boolean;
+    FDropTimer: Single;
+    FDropDuration: Single;
+    FDroppingCubes: TArray<TGorillaCube>;
+    FDropStartPos: TArray<TVector3D>;
+    FDropEndPos: TArray<TVector3D>;
+    FDropDelay: TArray<Single>; // individuelle Verzögerung pro Würfel
+
     procedure ShuffleBag;
     procedure RefillBag;
     function DrawFromBag: TCellKind;
@@ -139,7 +150,6 @@ type
 
     procedure SpawnPiece;
     procedure LockPiece;
-    procedure StartLineClearAnimation(const Lines: TArray<Integer>);
 
     procedure RedrawBoard;
     procedure RedrawActive;
@@ -148,7 +158,10 @@ type
     procedure StepGame;
     procedure UpdateStats;
     procedure UpdatePreview;
+
+    procedure StartLineClearAnimation(const Lines: TArray<Integer>);
     procedure StartShakeBoard;
+    procedure StartDropAnimation;
 
     procedure DoOnTick(Sender: TObject);
 
@@ -170,7 +183,7 @@ implementation
 {$R *.fmx}
 
 // Array zur Speicherung der Fallgeschwindigkeiten
-const DropDelays: array[0..20] of Single =
+const PieceDropDelays: array[0..20] of Single =
   (0.8, 0.717, 0.63, 0.55, 0.47, 0.39, 0.31, 0.23, 0.15, 0.1, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02, 0.02, 0.02);
   // (Werte aus original Tetris, für die Level 0-20)
 
@@ -408,8 +421,8 @@ begin
   FLevel := 0;
   FLinesCleared := 0;
 
-  FDropDelay := 0.9; // langsamer Start
-  FDropTimer := 0;
+  FPieceDropDelay := 0.9; // langsamer Start
+  FPieceDropTimer := 0;
 
   // Initialisiere die DAS/ARR-Werte
   FMoveDelay := 0.2; // 200 ms Verzögerung
@@ -501,7 +514,7 @@ begin
   SpawnPiece;
 
   UpdateStats; // Neue Prozedur zum Aktualisieren der Labels
-  FDropDelay := DropDelays[FLevel];
+  FPieceDropDelay := PieceDropDelays[FLevel];
 end;
 
 procedure TForm1.CreateGorillaScene;
@@ -691,6 +704,8 @@ begin
       SetLength(FAnimatedCubes, 0);
       SetLength(FAnimatedVelocities, 0);
 
+      StartDropAnimation;
+(*
       // 2) Board nachrücken basierend auf FRemovedLines
       if Length(FRemovedLines) > 0 then
       begin
@@ -731,6 +746,7 @@ begin
       UpdateStats;
       if not FGameOver then
         SpawnPiece;
+*)
     end;
 
     Exit; // Timer-Prozedur verlassen, um Gravitation zu überspringen
@@ -833,6 +849,110 @@ begin
     Exit; // Während Shake keine andere Spiel-Logik ausführen
   end;
 
+  // --- Drop-Animation nach Line Clear ---
+  if FIsDropping then
+  begin
+    FDropTimer := FDropTimer + DT;
+    var allDone := True;
+
+    for i := 0 to High(FDroppingCubes) do
+    begin
+      var cube := FDroppingCubes[i];
+      if not Assigned(cube) then Continue;
+
+      var delay := FDropDelay[i];
+      var localT := (FDropTimer - delay) / FDropDuration;
+
+      if localT < 0 then
+      begin
+        allDone := False;
+        Continue; // Würfel wartet noch
+      end;
+
+      if localT >= 1 then
+        localT := 1
+      else
+        allDone := False;
+
+      // Smooth easing (Quadratic In)
+      var easedT := localT * localT;
+
+      var startP := FDropStartPos[i];
+      var endP := FDropEndPos[i];
+
+      var newY := startP.Y + (endP.Y - startP.Y) * easedT;
+      var newX := endP.X;
+      var newZ := endP.Z;
+
+      cube.Position.Point := Point3D(newX, newY, newZ);
+    end;
+
+    if allDone then
+    begin
+      // Aufräumen
+      for i := 0 to High(FDroppingCubes) do
+        if Assigned(FDroppingCubes[i]) then
+          FDroppingCubes[i].Position.Point := FDropEndPos[i];
+
+      SetLength(FDroppingCubes, 0);
+      SetLength(FDropStartPos, 0);
+      SetLength(FDropEndPos, 0);
+      SetLength(FDropDelay, 0);
+
+      FIsDropping := False;
+
+      (*
+      // 2) Board nachrücken basierend auf FRemovedLines
+      if Length(FRemovedLines) > 0 then
+      begin
+        var yOffset := 0;
+        for y := ROWS - 1 downto 0 do
+        begin
+          var removed := False;
+          for var rl in FRemovedLines do
+            if rl = y then
+            begin
+              removed := True;
+              Break;
+            end;
+
+          if removed then
+          begin
+            Inc(yOffset);
+            for x := 0 to COLS - 1 do
+              FBoard[y, x] := ckNone;
+          end
+          else if yOffset > 0 then
+          begin
+            for x := 0 to COLS - 1 do
+            begin
+              FBoard[y + yOffset, x] := FBoard[y, x];
+              FBoard[y, x] := ckNone;
+
+              if Assigned(FCubes[y, x]) then
+              begin
+                FCubes[y + yOffset, x] := FCubes[y, x];
+                FCubes[y + yOffset, x].Position.Point := Point3D(x, y + yOffset, 0);
+                FCubes[y, x] := nil;
+              end;
+            end;
+          end;
+        end;
+
+        SetLength(FRemovedLines, 0);
+      end;
+      *)
+
+      // 3) Aktualisieren + neues Stück (sofern nicht GameOver)
+      RedrawBoard;
+      UpdateStats;
+      if not FGameOver then
+        SpawnPiece;
+    end;
+
+    Exit; // während Drop keine normalen Gravitation/Inputs
+  end;
+
   // --- Gravitations-Logik und DAS/ARR wie zuvor ---
   if FDownHeld or FHardDrop then
   begin
@@ -841,12 +961,12 @@ begin
   end
   else
   begin
-    FDropTimer := FDropTimer + DT;
-    if FDropTimer >= FDropDelay then
+    FPieceDropTimer := FPieceDropTimer + DT;
+    if FPieceDropTimer >= FPieceDropDelay then
     begin
       if not TryMove(0,1) then
         LockPiece;
-      FDropTimer := 0;
+      FPieceDropTimer := 0;
     end;
   end;
 
@@ -1011,7 +1131,7 @@ begin
     FScore := 0;
     FLevel := 0;
     FLinesCleared := 0;
-    FDropDelay := DropDelays[0];
+    FPieceDropDelay := PieceDropDelays[0];
     FillChar(FBoard, SizeOf(FBoard), 0); // Spielfeld leeren
     RedrawBoard;
     UpdateStats;
@@ -1125,40 +1245,6 @@ begin
   RedrawGhost;
 end;
 
-(*
-procedure TForm1.LockPiece;
-var cells: TArray<TPoint>;
-    p: TPoint;
-    i: Integer;
-begin
-  FHardDrop := false;
-
-  cells := CellsOf(FCurrentPiece.Matrix);
-  for i:=0 to 3 do
-  begin
-    p := cells[i];
-    if FCurrentPiece.Y + p.Y >= 0 then
-      FBoard[FCurrentPiece.Y + p.Y, FCurrentPiece.X + p.X] := FCurrentPiece.Kind;
-  end;
-
-  // Aktive Würfel verstecken bis zum nächsten Teil
-  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then FActiveCubes[i].Visible := False;
-  // Ghost-Würfel verstecken
-  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then FGhostCubes[i].Visible := False;
-
-  // TODO: shaking animation
-  if FHardDrop then
-  begin
-    RedrawBoard;
-    ClearLines; // definiere unten
-  end
-  else
-  begin
-    RedrawBoard;
-    ClearLines; // definiere unten
-  end;
-end;
-*)
 procedure TForm1.LockPiece;
 var cells: TArray<TPoint>;
     p: TPoint;
@@ -1237,8 +1323,8 @@ begin
     if FLinesCleared div 10 > FLevel then
     begin
       Inc(FLevel);
-      if FLevel <= High(DropDelays) then
-        FDropDelay := DropDelays[FLevel];
+      if FLevel <= High(PieceDropDelays) then
+        FPieceDropDelay := PieceDropDelays[FLevel];
     end;
 
     // Speichere die zu löschenden Zeilen und starte Animation
@@ -1518,5 +1604,88 @@ begin
   end;
 end;
 
+procedure TForm1.StartDropAnimation;
+var
+  x, y, idx, dropCount: Integer;
+  cube: TGorillaCube;
+  startPos, endPos: TVector3D;
+  removedFlag: array[0..ROWS-1] of Boolean;
+begin
+  if Length(FRemovedLines) = 0 then Exit;
+
+  // 1) Markiere entfernte Linien
+  FillChar(removedFlag, SizeOf(removedFlag), 0);
+  for y in FRemovedLines do
+    if (y >= 0) and (y < ROWS) then
+      removedFlag[y] := True;
+
+  // 2) Lösche die Linien sofort im Board
+  for y in FRemovedLines do
+    for x := 0 to COLS-1 do
+    begin
+      FBoard[y, x] := ckNone;
+      if Assigned(FCubes[y, x]) then
+      begin
+        FCubes[y, x].Visible := False;
+        FCubes[y, x] := nil;
+      end;
+    end;
+
+  SetLength(FDroppingCubes, 0);
+  SetLength(FDropStartPos, 0);
+  SetLength(FDropEndPos, 0);
+  SetLength(FDropDelay, 0);
+
+  // 3) Drop nur für Würfel oberhalb gelöschter Linien
+  for x := 0 to COLS - 1 do
+  begin
+    dropCount := 0;
+    for y := ROWS - 1 downto 0 do
+    begin
+      if removedFlag[y] then
+      begin
+        Inc(dropCount);
+        Continue;
+      end;
+
+      if FBoard[y, x] <> ckNone then
+      begin
+        cube := FCubes[y, x];
+        if Assigned(cube) and (dropCount > 0) then
+        begin
+          startPos := cube.Position.Point;
+          endPos := Point3D(startPos.X, startPos.Y + dropCount, startPos.Z); // nur fallen um dropCount
+
+          idx := Length(FDroppingCubes);
+          SetLength(FDroppingCubes, idx + 1);
+          SetLength(FDropStartPos, idx + 1);
+          SetLength(FDropEndPos, idx + 1);
+          SetLength(FDropDelay, idx + 1);
+
+          FDroppingCubes[idx] := cube;
+          FDropStartPos[idx] := startPos;
+          FDropEndPos[idx] := endPos;
+          FDropDelay[idx] := Random * 0.18;
+
+          // Board sofort aktualisieren
+          FBoard[y + dropCount, x] := FBoard[y, x];
+          FCubes[y + dropCount, x] := cube;
+
+          FBoard[y, x] := ckNone;
+          FCubes[y, x] := nil;
+        end;
+      end;
+    end;
+  end;
+
+  if Length(FDroppingCubes) > 0 then
+  begin
+    FDropTimer := 0;
+    FDropDuration := 0.35;
+    FIsDropping := True;
+  end;
+
+  SetLength(FRemovedLines, 0);
+end;
 
 end.
