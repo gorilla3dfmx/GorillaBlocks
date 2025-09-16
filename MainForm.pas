@@ -2,13 +2,26 @@ unit MainForm;
 
 interface
 
+{$DEFINE AUDIO}
+{$DEFINE SKYBOX}
+
+{$IFDEF ANDROID}
+  {$UNDEF AUDIO}
+  {$UNDEF SKYBOX}
+{$ENDIF}
+
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   System.Math.Vectors, System.Math, System.IOUtils, FMX.Types3D,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Objects3D,
-  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts, Gorilla.Audio.FMOD,
+  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts,
+{$IFDEF AUDIO}
+  Gorilla.Audio.FMOD,
+{$ENDIF}
   Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer, Gorilla.Light,
-  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
+  Gorilla.Material.Default, Gorilla.Cube,
+  Gorilla.SkyBox,
+  Gorilla.Plane,
   Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn,
   System.SyncObjs, FMX.Objects, FMX.Controls.Presentation, FMX.Gestures;
 
@@ -51,6 +64,8 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
     procedure FormKeyUp(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
+    procedure ViewportGesture(Sender: TObject; const EventInfo: TGestureEventInfo;
+      var Handled: Boolean);
 
   private
     FGorilla : TGorillaViewport;
@@ -113,8 +128,10 @@ type
     FBag: array[0..6] of TCellKind;
     FBagIndex: Integer; // Index auf das nächste Element in der Bag (0..6)
 
+  {$IFDEF AUDIO}
     // Music and effects
     FAudioPlayer : TGorillaFMODAudioManager;
+  {$ENDIF}
 
     // --- Shake-Animation für HardDrop ---
     FIsShaking: Boolean;
@@ -409,12 +426,14 @@ begin
   FAssetsPath := IncludeTrailingPathDelimiter(System.IOUtils.TPath.GetHomePath());
 {$ENDIF}
 
+{$IFDEF AUDIO}
   FAudioPlayer := TGorillaFMODAudioManager.Create(Self);
   FAudioPlayer.AutoUpdate := true;
   var LSoundItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'tetris_style.wav');
   LSoundItem.Loop := true;
   LSoundItem.LoopCount := -1;
   LSoundItem.Play();
+{$ENDIF}
 
   // Spielzustand initialisieren
   FScore := 0;
@@ -449,42 +468,11 @@ begin
   FGorilla.UsingDesignCamera := False;
   FGorilla.EmissiveBlur := 3;
 
-  var LSkyBox := TGorillaSkyBox.Create(FGorilla);
-  LSkyBox.Parent := FGorilla;
-  LSkyBox.Size := Point3D(50, 50, 50);
-  LSkyBox.Mode := TGorillaSkyBoxMode.CubeMapSkyBox;
-  LSkyBox.FrontSide.LoadFromFile(FAssetsPath + 'SkyBox.png');
-
-  var LFloor := TGorillaPlane.Create(FGorilla);
-  LFloor.Parent := FGorilla;
-  LFloor.RotationAngle.X := 90;
-  LFloor.SetSize(50, 50, 1);
-  LFloor.Position.Y := 20;
-
-  // Ein Untergrund mit bewegender Textur, die stets durchläuft
-  var LFloorMat := TGorillaLambertMaterialSource.Create(LFloor);
-  LFloorMat.Parent := LFloor;
-  LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
-  LFloorMat.MeasureTime := true;
-  LFloorMat.ShadingIntensity := 2;
-  var LStr := TStringList.Create();
-  try
-    LStr.Text :=
-      '''
-      void SurfaceShader(inout TLocals DATA){
-        vec2 l_TexOfs = DATA.TexCoord0.xy;
-
-        float iTime = mod(mod(_TimeInfo.y, 360.0) * 0.1, 0.5);
-        l_TexOfs += vec2(0.0, iTime);
-        DATA.BaseColor.rgb = tex2D(_Texture0, l_TexOfs).rgb;
-      }
-      ''';
-    LFloorMat.SurfaceShader := LStr;
-  finally
-    FreeAndNil(LStr);
-  end;
-
-  LFloor.MaterialSource := LFloorMat;
+  FGorilla.Touch.GestureManager := GestureManager1;
+  FGorilla.Touch.StandardGestures := [TStandardGesture.sgLeft,
+    TStandardGesture.sgRight, TStandardGesture.sgUp, TStandardGesture.sgDown];
+  FGorilla.Touch.InteractiveGestures := [TInteractiveGesture.DoubleTap];
+  FGorilla.OnGesture := ViewportGesture;
 
   // manual rendering via GorillaTimer (fixed ~60 fps)
   FTimer := TGorillaTimer.Create;
@@ -527,12 +515,16 @@ begin
   // Create a dummy as camera target at the board center
   FTarget := TDummy.Create(FGorilla);
   FTarget.Parent := FGorilla;
-  FTarget.Position.Point := Point3D( COLS/2, ROWS/2, 0 ); // forward declare via consts below
+  FTarget.Position.Point := Point3D(COLS/2, ROWS/2, 0); // forward declare via consts below
 
   // Create a Gorilla camera as child of target (orbit-style) and link to viewport
   FCamera := TGorillaCamera.Create(FTarget);
   FCamera.Parent := FTarget;
+{$IFDEF ANDROID}
+  FCamera.Position.Point := Point3D(0, 0, 45); // offset back on Z
+{$ELSE}
   FCamera.Position.Point := Point3D(0, 0, 28); // offset back on Z
+{$ENDIF}
   FCamera.FOV := 45;
   FCamera.Target := FTarget;    // << link target so it always looks at board center
 
@@ -546,16 +538,78 @@ begin
   FLight.Parent := FCamera;
   FLight.LightType := TLightType.Point;
 
-  // --- Visual borders / background for board size ---
-  borderMat := TGorillaDefaultMaterialSource.Create(FGorilla);
-  borderMat.Parent := FGorilla;
-  borderMat.Diffuse := $55094e86; // dunkel halbtransparent
-  borderMat.Emissive := $00000000;
+  var LSkyBox := TGorillaSkyBox.Create(FGorilla);
+  LSkyBox.Parent := FGorilla;
 
-  backMat := TGorillaDefaultMaterialSource.Create(FGorilla);
+{$IFDEF SKYBOX}
+  LSkyBox.Size := Point3D(50, 50, 50);
+  LSkyBox.Mode := TGorillaSkyBoxMode.CubeMapSkyBox;
+  LSkyBox.FrontSide.LoadFromFile(FAssetsPath + 'SkyBox.png');
+{$ELSE}
+  LSkyBox.Mode := TGorillaSkyBoxMode.Blank;
+  LSkyBox.Diffuse := TAlphaColorRec.Black;
+{$ENDIF}
+
+{$IFnDEF SKYBOX}
+  // There is a bug on loading cubemaps on Android: Until the bug is fixed, we
+  // setup a plane as background instead.
+  var LPlane := TGorillaPlane.Create(FGorilla);
+  LPlane.Parent := FGorilla;
+  LPlane.SetSize(50, 50, 1);
+  LPlane.Position.Point := Point3D(0, 0, -25);
+
+  var LPlaneMat := TGorillaDefaultMaterialSource.Create(LPlane);
+  LPlaneMat.Parent := LPlane;
+  LPlaneMat.UseTexture0 := true;
+  LPlaneMat.Texture.LoadFromFile(FAssetsPath + 'Skybox.jpg');
+  LPlane.MaterialSource := LPlaneMat;
+{$ENDIF}
+
+  var LFloor := TGorillaPlane.Create(FGorilla);
+  LFloor.Parent := FGorilla;
+  LFloor.RotationAngle.X := 90;
+  LFloor.SetSize(50, 50, 1);
+  LFloor.Position.Y := 22.5;
+
+  // Ein Untergrund mit bewegender Textur, die stets durchläuft
+  var LFloorMat := TGorillaDefaultMaterialSource.Create(LFloor);
+  LFloorMat.Parent := LFloor;
+  LFloorMat.UseTexture0 := true;
+  LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
+
+  LFloorMat.MeasureTime := true;
+  LFloorMat.ShadingIntensity := 2;
+  var LStr := TStringList.Create();
+  try
+    LStr.Text :=
+      '''
+      void SurfaceShader(inout TLocals DATA){
+        vec2 l_TexOfs = DATA.TexCoord0.xy;
+
+        float iTime = mod(mod(_TimeInfo.y, 360.0) * 0.2, 0.5);
+        l_TexOfs += vec2(0.0, iTime);
+        DATA.BaseColor.rgb = tex2D(_Texture0, l_TexOfs).rgb;
+      }
+      ''';
+    LFloorMat.SurfaceShader := LStr;
+  finally
+    FreeAndNil(LStr);
+  end;
+
+  LFloor.MaterialSource := LFloorMat;
+
+  // --- Visual borders / background for board size ---
+  borderMat := TGorillaLambertMaterialSource.Create(FGorilla);
+  borderMat.Parent := FGorilla;
+  borderMat.Diffuse := $ff094e86; // dunkel halbtransparent
+  borderMat.Emissive := $00000000;
+  borderMat.UseTexture0 := false;
+
+  backMat := TGorillaLambertMaterialSource.Create(FGorilla);
   backMat.Parent := FGorilla;
-  backMat.Diffuse := $55094e86; // halbtransparent bläulich
+  backMat.Diffuse := $ff094e86; // halbtransparent bläulich
   backMat.Emissive := $00000000;
+  backMat.UseTexture0 := false;
 
   borderThickness := 0.25;
   backDepth := 0.1;
@@ -654,6 +708,7 @@ begin
   // Wenn eine Animation läuft, nur diese verarbeiten
   if FIsAnimating then
   begin
+  {$IFDEF AUDIO}
     // Free the previously loaded item
     var LPrevItem := FAudioPlayer.GetSoundItemByFilename(FAssetsPath + 'row_clear.wav');
     if Assigned(LPrevItem) then
@@ -661,6 +716,7 @@ begin
 
     var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'row_clear.wav');
     LItem.Play;
+  {$ENDIF}
 
     FAnimationTimer := FAnimationTimer + DT;
 
@@ -705,48 +761,6 @@ begin
       SetLength(FAnimatedVelocities, 0);
 
       StartDropAnimation;
-(*
-      // 2) Board nachrücken basierend auf FRemovedLines
-      if Length(FRemovedLines) > 0 then
-      begin
-        var yOffset := 0;
-        for y := ROWS - 1 downto 0 do
-        begin
-          var removed := False;
-          for var rl in FRemovedLines do if rl = y then begin removed := True; Break; end;
-
-          if removed then
-          begin
-            Inc(yOffset);
-            for x := 0 to COLS - 1 do
-              FBoard[y, x] := ckNone;
-          end
-          else if yOffset > 0 then
-          begin
-            for x := 0 to COLS - 1 do
-            begin
-              FBoard[y + yOffset, x] := FBoard[y, x];
-              FBoard[y, x] := ckNone;
-
-              if Assigned(FCubes[y, x]) then
-              begin
-                FCubes[y + yOffset, x] := FCubes[y, x];
-                FCubes[y + yOffset, x].Position.Point := Point3D(x, y + yOffset, 0);
-                FCubes[y, x] := nil;
-              end;
-            end;
-          end;
-        end;
-
-        SetLength(FRemovedLines, 0);
-      end;
-
-      // 3) Aktualisieren + neues Stück (sofern nicht GameOver)
-      RedrawBoard;
-      UpdateStats;
-      if not FGameOver then
-        SpawnPiece;
-*)
     end;
 
     Exit; // Timer-Prozedur verlassen, um Gravitation zu überspringen
@@ -755,6 +769,7 @@ begin
   // --- Shake-Animation verarbeiten (HardDrop) ---
   if FIsShaking then
   begin
+  {$IFDEF AUDIO}
     // Free the previously loaded item
     var LPrevItem := FAudioPlayer.GetSoundItemByFilename(FAssetsPath + 'harddrop_thud.wav');
     if Assigned(LPrevItem) then
@@ -762,6 +777,7 @@ begin
 
     var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'harddrop_thud.wav');
     LItem.Play;
+  {$ENDIF}
 
     FShakeTimer := FShakeTimer + DT;
     var t := FShakeTimer / FShakeDuration;
@@ -901,48 +917,6 @@ begin
 
       FIsDropping := False;
 
-      (*
-      // 2) Board nachrücken basierend auf FRemovedLines
-      if Length(FRemovedLines) > 0 then
-      begin
-        var yOffset := 0;
-        for y := ROWS - 1 downto 0 do
-        begin
-          var removed := False;
-          for var rl in FRemovedLines do
-            if rl = y then
-            begin
-              removed := True;
-              Break;
-            end;
-
-          if removed then
-          begin
-            Inc(yOffset);
-            for x := 0 to COLS - 1 do
-              FBoard[y, x] := ckNone;
-          end
-          else if yOffset > 0 then
-          begin
-            for x := 0 to COLS - 1 do
-            begin
-              FBoard[y + yOffset, x] := FBoard[y, x];
-              FBoard[y, x] := ckNone;
-
-              if Assigned(FCubes[y, x]) then
-              begin
-                FCubes[y + yOffset, x] := FCubes[y, x];
-                FCubes[y + yOffset, x].Position.Point := Point3D(x, y + yOffset, 0);
-                FCubes[y, x] := nil;
-              end;
-            end;
-          end;
-        end;
-
-        SetLength(FRemovedLines, 0);
-      end;
-      *)
-
       // 3) Aktualisieren + neues Stück (sofern nicht GameOver)
       RedrawBoard;
       UpdateStats;
@@ -990,7 +964,33 @@ begin
         FMoveTimer := delay - FMoveRate;
       end;
     end;
+
+  {$IFDEF ANDROID}
+    // Because we're using gestures on Android, we need to reset our flags
+    // if they were enabled in the gesture callback
+    if FLeftHeld then
+    begin
+        FLeftHeld := False;
+        FIsInitialMove := False;
+        FMoveTimer := 0;
+    end;
+
+    if FRightHeld then
+    begin
+      FRightHeld := False;
+      FIsInitialMove := False;
+      FMoveTimer := 0;
+    end;
+
+    FDownHeld := False;
+  {$ENDIF}
   end;
+
+{$IFDEF ANDROID}
+  // Because Android rendering is event-based - we need to invalidate the scene
+  // on each tick
+  FGorilla.Invalidate();
+{$ENDIF}
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -1003,6 +1003,72 @@ begin
       FTimer.WaitFor;
     end;
     FTimer.Free;
+  end;
+end;
+
+procedure TForm1.ViewportGesture(Sender: TObject;
+  const EventInfo: TGestureEventInfo; var Handled: Boolean);
+begin
+  if FGameOver then // Beispiel: Neustart mit Enter
+  begin
+    // Neustart-Flow: Spielfeld leeren, Status zurücksetzen, Timer ggf neu starten
+    FGameOver := False;
+    FScore := 0;
+    FLevel := 0;
+    FLinesCleared := 0;
+    FPieceDropDelay := PieceDropDelays[0];
+    FillChar(FBoard, SizeOf(FBoard), 0); // Spielfeld leeren
+    RedrawBoard;
+    UpdateStats;
+
+    // Falls Timer gestoppt wurde, neu erstellen / starten
+    if Assigned(FTimer) and not FTimer.Started then
+    begin
+      FTimer := TGorillaTimer.Create;
+      FTimer.Interval := 16;
+      FTimer.OnTimer := DoOnTick;
+      FTimer.Start;
+    end;
+
+    SpawnPiece;
+    Exit;
+  end;
+
+  if FHardDrop then
+    Exit;
+
+  case EventInfo.GestureID of
+    sgiLeft  :
+      begin
+        FLeftHeld := True;
+        FIsInitialMove := False;
+        FMoveTimer := 0;
+      end;
+
+    sgiRight :
+      begin
+        FRightHeld := True;
+        FIsInitialMove := False;
+        FMoveTimer := 0;
+      end;
+
+    sgiUp :
+      begin
+        RotatePiece(FCurrentPiece, +1, FBoard);
+        RedrawActive;
+      end;
+
+    sgiDown :
+      begin
+        RotatePiece(FCurrentPiece, -1, FBoard);
+        RedrawActive;
+      end;
+
+    igiDoubleTap :
+      begin
+        // Hard Drop
+        FHardDrop := true;
+      end;
   end;
 end;
 
