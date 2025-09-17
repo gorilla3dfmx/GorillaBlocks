@@ -569,16 +569,15 @@ begin
   LFloor.Parent := FGorilla;
   LFloor.RotationAngle.X := 90;
   LFloor.SetSize(50, 50, 1);
-  LFloor.Position.Y := 22.5;
+  LFloor.Position.Point := Point3D(10, 22.5, 10);
 
   // Ein Untergrund mit bewegender Textur, die stets durchläuft
-  var LFloorMat := TGorillaDefaultMaterialSource.Create(LFloor);
+  var LFloorMat := TGorillaLambertMaterialSource.Create(LFloor);
   LFloorMat.Parent := LFloor;
   LFloorMat.UseTexture0 := true;
   LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
 
   LFloorMat.MeasureTime := true;
-  LFloorMat.ShadingIntensity := 2;
   var LStr := TStringList.Create();
   try
     LStr.Text :=
