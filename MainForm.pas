@@ -84,7 +84,10 @@ type
     FLeftHeld,
     FDownHeld,
     FRightHeld : Boolean;
+
+    FHardDropExtraPoints,
     FHardDrop  : Boolean;
+
     FLastMove  : TDateTime;
     FWithGesture : Boolean;
     FCurrentPiece :TPiece;
@@ -120,6 +123,10 @@ type
     FIsAnimating: Boolean; // Statusvariable, die anzeigt, ob eine Animation läuft
     FAnimatedCubes: TArray<TGorillaCube>; // Array für die zu animierenden Würfel
     FAnimatedVelocities: TArray<TVector3D>; // Array für die Startgeschwindigkeiten
+    FAnimatedBasePos: TArray<TPoint3D>; // Ursprungspositionen für Vibration
+    FAnimatedVibrateDirs: TArray<TVector3D>; // Richtungen der Vibration pro Würfel
+    FAnimatedPhases: TArray<Single>; // Phasen für die Sinus-Vibration
+    FExplosionTriggered: Boolean; // interne Flag, ob die Explosion ausgelöst wurde
     FRemovedLines: TArray<Integer>; // Speichert die Y-Koordinaten der zu löschenden Zeilen
 
     // Next-piece preview
@@ -712,10 +719,20 @@ end;
 
 procedure TForm1.DoOnTick(Sender: TObject);
 const DT = 1/60;
+// Animation der explodierenden Würfel / Vibration -> Explosion
+const
+  VIBRATE_TIME = 0.4; // Sekunden Vibration bevor Explosion
+  VIBRATE_AMPLITUDE = 0.15; // maximale Verschiebung in Einheiten (relativ)
+  VIBRATE_FREQ = 50.0; // Frequenz der Vibration (Hz)
+  EXPLOSION_DURATION = 0.65; // Gesamtdauer nach Explosion (wird weiter unten verwendet)
+var
+  vibrOff: TPoint3D;
+  phase: Single;
 var
   i: Integer;
   pos: TVector3D;
   x,y: Integer;
+  amplitude: Single;
 begin
   // Wenn GameOver gesetzt ist, keine Spiel-Logik mehr (aber noch Animation beenden lassen)
   if FGameOver and not FIsAnimating then
@@ -735,12 +752,58 @@ begin
   {$ENDIF}
 
     FAnimationTimer := FAnimationTimer + DT;
+    amplitude := VIBRATE_AMPLITUDE * abs(sin(FAnimationTimer) * 2);
 
-    // Animation der explodierenden Würfel
+    // Animation der explodierenden Würfel / Vibration -> Explosion
     for i := 0 to High(FAnimatedCubes) do
     begin
       if Assigned(FAnimatedCubes[i]) then
       begin
+        // Wenn wir noch in der Vibrationsphase sind, wackeln die Würfel an Ort und Stelle
+        if FAnimationTimer < VIBRATE_TIME then
+        begin
+          phase := FAnimatedPhases[i];
+          // Sinusbasierte Vibration entlang einer kleinen zufälligen Richtung
+          vibrOff := Point3D(
+            FAnimatedVibrateDirs[i].X * Sin((FAnimationTimer * VIBRATE_FREQ) + phase) * amplitude,
+            FAnimatedVibrateDirs[i].Y * Sin((FAnimationTimer * VIBRATE_FREQ) + phase) * amplitude,
+            FAnimatedVibrateDirs[i].Z * Sin((FAnimationTimer * VIBRATE_FREQ) + phase) * amplitude
+          );
+          FAnimatedCubes[i].Position.Point := Point3D(
+            FAnimatedBasePos[i].X + vibrOff.X,
+            FAnimatedBasePos[i].Y + vibrOff.Y,
+            FAnimatedBasePos[i].Z + vibrOff.Z
+          );
+
+          // leichte pulsierende Emissive / Scale kann hinzugefügt werden, falls gewünscht
+          Continue;
+        end;
+
+        // Sobald die Vibrationsphase vorbei ist, löse einmalig die Explosion aus
+        if (not FExplosionTriggered) then
+        begin
+          // Erzeuge für jeden animierten Würfel eine zufällige Explosionsgeschwindigkeit
+          for var j := 0 to High(FAnimatedVelocities) do
+          begin
+            // Nur für vorhandene Würfel setzen
+            if Assigned(FAnimatedCubes[j]) then
+            begin
+              FAnimatedVelocities[j] := Vector3D(
+                (RandomRange(-400, 400) / 100) * (1 + RandomRange(0,200)/100), // X
+                (RandomRange(-100, 300) / 100) * (1 + RandomRange(0,200)/100), // Y - leicht nach oben bevorzugt
+                (RandomRange(-400, 400) / 100) * (1 + RandomRange(0,200)/100)  // Z
+              );
+            end;
+          end;
+          FExplosionTriggered := True;
+
+        {$IFDEF AUDIO}
+//          var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'explode.wav');
+//          if Assigned(LItem) then LItem.Play;
+        {$ENDIF}
+        end;
+
+        // Normale Bewegungsintegration nach Explosion
         pos := FAnimatedCubes[i].Position.Point;
         pos.X := pos.X + FAnimatedVelocities[i].X * DT * 5;
         pos.Y := pos.Y + FAnimatedVelocities[i].Y * DT * 5;
@@ -758,7 +821,7 @@ begin
     end;
 
     // Animation beenden und Spielfeld aktualisieren, wenn der Timer abläuft
-    if FAnimationTimer >= 0.5 then // 0.5 Sekunden Explosionsdauer
+    if FAnimationTimer >= EXPLOSION_DURATION then
     begin
       FIsAnimating := False;
 
@@ -1121,12 +1184,14 @@ begin
       begin
         // Hard Drop
         FHardDrop := true;
+        FHardDropExtraPoints := true;
       end;
 
     igiDoubleTap :
       begin
         // Hard Drop
         FHardDrop := true;
+        FHardDropExtraPoints := true;
       end;
   end;
 end;
@@ -1312,7 +1377,11 @@ begin
       end;
 
     0,
-    vkSpace : FHardDrop := true;
+    vkSpace :
+      begin
+        FHardDrop := true;
+        FHardDropExtraPoints := true;
+      end;
   end;
 end;
 
@@ -1472,12 +1541,31 @@ begin
   if Length(linesToClear) > 0 then
   begin
     // Schritt 2: Punkte vergeben und Level erhöhen
+    var LScore := 0;
     case Length(linesToClear) of
-      1: FScore := FScore + 40 * (FLevel + 1);
-      2: FScore := FScore + 100 * (FLevel + 1);
-      3: FScore := FScore + 300 * (FLevel + 1);
-      4: FScore := FScore + 1200 * (FLevel + 1);
+      1: begin
+            LScore := 40 * (FLevel + 1);
+            if FHardDropExtraPoints then
+              LScore := LScore + 10;
+         end;
+      2: begin
+            LScore := 100 * (FLevel + 1);
+            if FHardDropExtraPoints then
+              LScore := LScore + 50;
+         end;
+      3: begin
+            LScore := 300 * (FLevel + 1);
+            if FHardDropExtraPoints then
+              LScore := LScore + 100;
+         end;
+      4: begin
+            LScore := 1200 * (FLevel + 1);
+            if FHardDropExtraPoints then
+              LScore := LScore + 300;
+         end;
     end;
+
+    FScore := FScore + LScore;
 
     FLinesCleared := FLinesCleared + Length(linesToClear);
     if FLinesCleared div 10 > FLevel then
@@ -1497,6 +1585,8 @@ begin
     if not FGameOver then
       SpawnPiece;
   end;
+
+  FHardDropExtraPoints := false;
 end;
 
 procedure TForm1.RedrawGhost;
@@ -1534,10 +1624,14 @@ var
 begin
   FIsAnimating := True;
   FAnimationTimer := 0;
+  FExplosionTriggered := False;
 
   // Blöcke aus den zu löschenden Reihen in das Animations-Array verschieben
   SetLength(FAnimatedCubes, Length(Lines) * COLS);
   SetLength(FAnimatedVelocities, Length(Lines) * COLS);
+  SetLength(FAnimatedBasePos, Length(Lines) * COLS);
+  SetLength(FAnimatedVibrateDirs, Length(Lines) * COLS);
+  SetLength(FAnimatedPhases, Length(Lines) * COLS);
 
   idx := 0;
   for y in Lines do
@@ -1547,23 +1641,44 @@ begin
       cube := FCubes[y, x];
       if Assigned(cube) and cube.Visible then
       begin
-        FAnimatedCubes[idx] := cube;
-        FAnimatedVelocities[idx] := Vector3D(
-          (RandomRange(-200, 200) / 100),
-          (RandomRange(50, 200) / 100),
-          (RandomRange(-200, 200) / 100)
+        // Basisposition speichern (für Vibration)
+        FAnimatedBasePos[idx] := cube.Position.Point;
+
+        // Anfang: keine Explosionsgeschwindigkeit, nur Vibration
+        FAnimatedVelocities[idx] := Vector3D(0,0,0);
+
+        // Zufällige Vibrationsrichtung und Phase
+        var dir := Vector3D(
+          RandomRange(-100, 100) / 100,
+          RandomRange(-100, 100) / 100,
+          RandomRange(-100, 100) / 100
         );
+        // Normieren, falls nicht null
+        var len := Sqrt(dir.X*dir.X + dir.Y*dir.Y + dir.Z*dir.Z);
+        if len > 0 then
+          dir := Vector3D(dir.X/len, dir.Y/len, dir.Z/len)
+        else
+          dir := Vector3D(0,1,0);
+        FAnimatedVibrateDirs[idx] := dir;
+
+        FAnimatedPhases[idx] := RandomRange(0, 31415) / 5000; // 0..~6.283 (radians)
+
+        // Referenz in das Animationsarray übernehmen
+        FAnimatedCubes[idx] := cube;
+
         Inc(idx);
       end;
 
-      // Referenz im Grid entfernen — das Objekt gehört nun der Animation
+      // Referenz im Grid entfernen – das Objekt gehört nun der Animation
       FCubes[y,x] := nil;
-      // FBoard bleibt bis zur Finalisierung bestehen oder wird dort gesetzt
     end;
   end;
 
   SetLength(FAnimatedCubes, idx);
   SetLength(FAnimatedVelocities, idx);
+  SetLength(FAnimatedBasePos, idx);
+  SetLength(FAnimatedVibrateDirs, idx);
+  SetLength(FAnimatedPhases, idx);
 end;
 
 procedure TForm1.HandleGameOver;
