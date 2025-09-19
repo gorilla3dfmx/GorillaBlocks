@@ -12,18 +12,16 @@ interface
 
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
-  System.Math.Vectors, System.Math, System.IOUtils, FMX.Types3D,
+  System.Math.Vectors, System.Math, System.IOUtils, System.SyncObjs, FMX.Types3D,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Objects3D,
-  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts,
+  FMX.Controls3D, FMX.StdCtrls, FMX.Layouts, FMX.Objects, FMX.Controls.Presentation,
+  FMX.Gestures,
 {$IFDEF AUDIO}
   Gorilla.Audio.FMOD,
 {$ENDIF}
   Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer, Gorilla.Light,
-  Gorilla.Material.Default, Gorilla.Cube,
-  Gorilla.SkyBox,
-  Gorilla.Plane,
-  Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn,
-  System.SyncObjs, FMX.Objects, FMX.Controls.Presentation, FMX.Gestures;
+  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
+  Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn;
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
 const
@@ -64,6 +62,8 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
     procedure FormKeyUp(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
+
+    procedure ViewportTap(Sender: TObject; const Point: TPointF);
     procedure ViewportGesture(Sender: TObject; const EventInfo: TGestureEventInfo;
       var Handled: Boolean);
 
@@ -83,10 +83,11 @@ type
     FActiveX, FActiveY : Integer;
     FLeftHeld,
     FDownHeld,
-    FRightHeld: Boolean;
-    FHardDrop: Boolean;
-    FLastMove:TDateTime;
-    FCurrentPiece:TPiece;
+    FRightHeld : Boolean;
+    FHardDrop  : Boolean;
+    FLastMove  : TDateTime;
+    FWithGesture : Boolean;
+    FCurrentPiece :TPiece;
 
     // Aktives Tetromino als 4 Würfel
     FActiveCubes : array[0..3] of TGorillaCube;
@@ -101,6 +102,7 @@ type
     FMoveTimer : Single; // Timer für horizontale Bewegung
     FMoveDelay : Single; // Verzögerung vor erster Wiederholung (DAS)
     FMoveRate : Single; // Zeit zwischen Wiederholungen (ARR)
+    FMoveIntensity : Integer;
     FIsInitialMove : Boolean; // Flag, um erste Bewegung zu markieren
     FGameOver : Boolean; // << Game-Over-Statusvariable
 
@@ -183,6 +185,7 @@ type
     procedure DoOnTick(Sender: TObject);
 
     procedure HandleGameOver; // zentrale, thread-sichere GameOver-Routine
+    procedure Clear();
 
   protected
     procedure CreateGorillaScene;
@@ -383,8 +386,10 @@ begin
   Result := False;
 end;
 
-function TForm1.TryMove(dx,dy: Integer): Boolean;
+function TForm1.TryMove(dx, dy: Integer): Boolean;
 begin
+  dx := dx * FMoveIntensity;
+
   // Prüfe Kollision am Ziel
   Result := not Collides(FCurrentPiece.Matrix, FCurrentPiece.X + dx, FCurrentPiece.Y + dy, FBoard);
   if Result then
@@ -447,6 +452,7 @@ begin
   FMoveDelay := 0.2; // 200 ms Verzögerung
   FMoveRate := 0.05; // 50 ms zwischen Wiederholungen
   FMoveTimer := 0;
+  FMoveIntensity := 1;
   FIsInitialMove := False;
   FGameOver := False; // << Spielstart: Nicht Game Over
 
@@ -471,8 +477,9 @@ begin
   FGorilla.Touch.GestureManager := GestureManager1;
   FGorilla.Touch.StandardGestures := [TStandardGesture.sgLeft,
     TStandardGesture.sgRight, TStandardGesture.sgUp, TStandardGesture.sgDown];
-  FGorilla.Touch.InteractiveGestures := [TInteractiveGesture.DoubleTap];
+  FGorilla.Touch.InteractiveGestures := [TInteractiveGesture.LongTap];
   FGorilla.OnGesture := ViewportGesture;
+  FGorilla.OnTap := ViewportTap;
 
   // manual rendering via GorillaTimer (fixed ~60 fps)
   FTimer := TGorillaTimer.Create;
@@ -588,6 +595,7 @@ begin
         float iTime = mod(mod(_TimeInfo.y, 360.0) * 0.2, 0.5);
         l_TexOfs += vec2(0.0, iTime);
         DATA.BaseColor.rgb = tex2D(_Texture0, l_TexOfs).rgb;
+        DATA.BaseColor.rgb += tex2D(_ReflectionTexture, DATA.TexCoord0.xy).rgb;
       }
       ''';
     LFloorMat.SurfaceShader := LStr;
@@ -619,6 +627,7 @@ begin
   leftBorder.Position.Point := Point3D(-0.5, (ROWS / 2) - 0.5, 0);
   leftBorder.MaterialSource := borderMat;
   leftBorder.SetOpacityValue(0.6);
+  leftBorder.SetHitTestValue(false);
   leftBorder.Visible := True;
 
   rightBorder := TGorillaCube.Create(FGorilla);
@@ -627,6 +636,7 @@ begin
   rightBorder.Position.Point := Point3D(COLS - 0.5, (ROWS / 2) - 0.5, 0);
   rightBorder.MaterialSource := borderMat;
   rightBorder.SetOpacityValue(0.6);
+  rightBorder.SetHitTestValue(false);
   rightBorder.Visible := True;
 
   backPlane := TGorillaCube.Create(FGorilla);
@@ -635,6 +645,7 @@ begin
   backPlane.Position.Point := Point3D((COLS / 2) - 0.5, (ROWS / 2) - 0.5, -1);
   backPlane.MaterialSource := backMat;
   backPlane.SetOpacityValue(0.45);
+  backPlane.SetHitTestValue(false);
   backPlane.Visible := True;
 
   // Create active & ghost cubes
@@ -644,6 +655,7 @@ begin
     FActiveCubes[i].Parent := FGorilla;
     FActiveCubes[i].SetSize(0.98,0.98,0.98);
     FActiveCubes[i].Visible := False;
+    FActiveCubes[i].SetHitTestValue(false);
   end;
 
   for i := 0 to 3 do
@@ -653,11 +665,14 @@ begin
     FGhostCubes[i].SetSize(0.98,0.98,0.98);
     FGhostCubes[i].Visible := False;
     FGhostCubes[i].SetOpacityValue(0.5);
+    FGhostCubes[i].SetHitTestValue(false);
+
     var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
     mat.Parent := FGorilla;
     mat.Diffuse := $FF888888;
     mat.Emissive := 0;
     mat.UseTexture0 := false;
+
     FGhostCubes[i].MaterialSource := mat;
   end;
 
@@ -671,6 +686,7 @@ begin
       FPreviewCubes[i,j].Parent := FGorilla;
       FPreviewCubes[i,j].SetSize(0.5, 0.5, 0.5); // etwas kleiner als Spielwürfel
       FPreviewCubes[i,j].Visible := False;
+
       // eigenes Material so dass die Vorschau dezenter ist
       var pMat := TGorillaDefaultMaterialSource.Create(FGorilla);
       pMat.Parent := FGorilla;
@@ -679,8 +695,10 @@ begin
       pMat.UseSpecular := true;
       pMat.Diffuse := $FF5D41DF;
       pMat.Emissive := $00000000;
+
       FPreviewCubes[i,j].MaterialSource := pMat;
       FPreviewCubes[i,j].SetOpacityValue(0.85);
+      FPreviewCubes[i,j].SetHitTestValue(false);
     end;
   end;
 
@@ -752,7 +770,8 @@ begin
         begin
           try
             FAnimatedCubes[i].Free;
-          except end;
+          except
+          end;
           FAnimatedCubes[i] := nil;
         end;
       end;
@@ -952,6 +971,7 @@ begin
       if FLeftHeld then TryMove(1, 0);
       if FRightHeld then TryMove(-1, 0);
       FMoveTimer := 0;
+      FMoveIntensity := 1;
     end
     else
     begin
@@ -964,25 +984,29 @@ begin
       end;
     end;
 
-  {$IFDEF ANDROID}
-    // Because we're using gestures on Android, we need to reset our flags
-    // if they were enabled in the gesture callback
-    if FLeftHeld then
+    if FWithGesture then
     begin
+      // Because we're using gestures on Android, we need to reset our flags
+      // if they were enabled in the gesture callback
+      if FLeftHeld then
+      begin
         FLeftHeld := False;
         FIsInitialMove := False;
         FMoveTimer := 0;
-    end;
+        FMoveIntensity := 1;
+      end;
 
-    if FRightHeld then
-    begin
-      FRightHeld := False;
-      FIsInitialMove := False;
-      FMoveTimer := 0;
-    end;
+      if FRightHeld then
+      begin
+        FRightHeld := False;
+        FIsInitialMove := False;
+        FMoveTimer := 0;
+        FMoveIntensity := 1;
+      end;
 
-    FDownHeld := False;
-  {$ENDIF}
+      FDownHeld := False;
+      FWithGesture := false;
+    end;
   end;
 
 {$IFDEF ANDROID}
@@ -994,6 +1018,8 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
+  Clear;
+
   if Assigned(FTimer) then
   begin
     if FTimer.Started then
@@ -1003,6 +1029,28 @@ begin
     end;
     FTimer.Free;
   end;
+end;
+
+procedure TForm1.ViewportTap(Sender: TObject; const Point: TPointF);
+var LVwPrtCtr : TPointF;
+begin
+  LVwPrtCtr := TPointF.Create(FGorilla.Width / 2, FGorilla.Height / 2);
+  if Point.X < LVwPrtCtr.X then
+  begin
+    FRightHeld := True;
+    FIsInitialMove := False;
+    FMoveTimer := 0;
+    FMoveIntensity := 1;
+  end
+  else if Point.X > LVwPrtCtr.X then
+  begin
+    FLeftHeld := True;
+    FIsInitialMove := False;
+    FMoveTimer := 0;
+    FMoveIntensity := 1;
+  end;
+
+  FWithGesture := true;
 end;
 
 procedure TForm1.ViewportGesture(Sender: TObject;
@@ -1036,12 +1084,16 @@ begin
   if FHardDrop then
     Exit;
 
+  FWithGesture := true;
   case EventInfo.GestureID of
+
+    // Piece Movement
     sgiLeft  :
       begin
         FLeftHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 10;
       end;
 
     sgiRight :
@@ -1049,8 +1101,10 @@ begin
         FRightHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 10;
       end;
 
+    // Piece Rotation
     sgiUp :
       begin
         RotatePiece(FCurrentPiece, +1, FBoard);
@@ -1061,6 +1115,13 @@ begin
       begin
         RotatePiece(FCurrentPiece, -1, FBoard);
         RedrawActive;
+      end;
+
+    // Dropping
+    igiLongTap :
+      begin
+        // Hard Drop
+        FHardDrop := true;
       end;
 
     igiDoubleTap :
@@ -1085,6 +1146,7 @@ begin
       cube.Parent := FGorilla;
       cube.Position.Point := Point3D(x, y, 0);
       cube.SetSize(0.94,0.94,0.94);
+      cube.SetHitTestValue(false);
 
       mat := TGorillaBlinnMaterialSource.Create(FGorilla);
       mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
@@ -1116,6 +1178,7 @@ begin
           FCubes[y,x].Parent := FGorilla;
           FCubes[y,x].Position.Point := Point3D(x, y, 0);
           FCubes[y,x].SetSize(0.94,0.94,0.94);
+          FCubes[y,x].SetHitTestValue(false);
         end;
 
         FCubes[y,x].Visible := True;
@@ -1131,6 +1194,7 @@ begin
           mat.Diffuse  := $FFFD1224;
           FCubes[y,x].MaterialSource := mat;
         end;
+
         mat.Emissive := PieceColors[FBoard[y,x]];
       end
       else
@@ -1218,30 +1282,38 @@ begin
     Exit;
 
   case Key of
-    vkLeft:
+    vkLeft :
       begin
         FLeftHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 1;
       end;
-    vkRight:
+
+    vkRight :
       begin
         FRightHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 1;
       end;
-    vkDown: FDownHeld := True;
 
-    vkUp: begin RotatePiece(FCurrentPiece, +1, FBoard); RedrawActive; end;
-    vkZ: begin RotatePiece(FCurrentPiece, -1, FBoard); RedrawActive; end;
+    vkDown : FDownHeld := True;
+
+    vkUp :
+      begin
+        RotatePiece(FCurrentPiece, +1, FBoard);
+        RedrawActive;
+      end;
+
+    vkZ :
+      begin
+        RotatePiece(FCurrentPiece, -1, FBoard);
+        RedrawActive;
+      end;
 
     0,
-    vkSpace:
-      begin // Hard Drop
-        FHardDrop := true;
-//        while TryMove(0,1) do ;
-//        LockPiece;
-      end;
+    vkSpace : FHardDrop := true;
   end;
 end;
 
@@ -1253,12 +1325,14 @@ begin
         FLeftHeld := False;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 1;
       end;
     vkRight:
       begin
         FRightHeld := False;
         FIsInitialMove := False;
         FMoveTimer := 0;
+        FMoveIntensity := 1;
       end;
     vkDown: FDownHeld := False;
   end;
@@ -1284,26 +1358,29 @@ begin
   for i:=0 to 3 do
   begin
     p := cells[i];
-    FActiveCubes[i].Visible := True;
-    FActiveCubes[i].Position.Point :=
-      Point3D(FCurrentPiece.X + p.X, (FCurrentPiece.Y + p.Y), 0);
+    if FActiveCubes[i] <> nil then
+    begin
+      FActiveCubes[i].Visible := True;
+      FActiveCubes[i].Position.Point :=
+        Point3D(FCurrentPiece.X + p.X, (FCurrentPiece.Y + p.Y), 0);
 
-    if not Assigned(FActiveCubes[i].MaterialSource) then
-    begin
-      mat := TGorillaBlinnMaterialSource.Create(FGorilla);
-      mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
-      mat.UseLighting := true;
-      mat.UseSpecular := true;
-      mat.UseTexture0 := false;
-      mat.Parent := FGorilla;
-      mat.Diffuse  := $FF0D1224;
-      mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
-      FActiveCubes[i].MaterialSource := mat;
-    end
-    else
-    begin
-      mat := TGorillaDefaultMaterialSource(FActiveCubes[i].MaterialSource);
-      mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
+      if not Assigned(FActiveCubes[i].MaterialSource) then
+      begin
+        mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+        mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+        mat.UseLighting := true;
+        mat.UseSpecular := true;
+        mat.UseTexture0 := false;
+        mat.Parent := FGorilla;
+        mat.Diffuse  := $FF0D1224;
+        mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
+        FActiveCubes[i].MaterialSource := mat;
+      end
+      else
+      begin
+        mat := TGorillaDefaultMaterialSource(FActiveCubes[i].MaterialSource);
+        mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
+      end;
     end;
   end;
 
@@ -1328,9 +1405,12 @@ begin
   end;
 
   // Aktive Würfel verstecken bis zum nächsten Teil
-  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then FActiveCubes[i].Visible := False;
+  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then
+    FActiveCubes[i].Visible := False;
+
   // Ghost-Würfel verstecken
-  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then FGhostCubes[i].Visible := False;
+  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then
+    FGhostCubes[i].Visible := False;
 
   // Board neu zeichnen (damit FCubes existieren / sichtbar sind)
   RedrawBoard;
@@ -1345,6 +1425,22 @@ begin
     // normales Verhalten: sofort Linien prüfen / löschen
     ClearLines;
   end;
+end;
+
+procedure TForm1.Clear;
+begin
+  System.SetLength(FAnimatedCubes, 0);
+  System.SetLength(FShakingCubes, 0);
+  System.SetLength(FDroppingCubes, 0);
+
+  for var I := 0 to 1 do
+    for var J := 0 to 3 do
+      FPreviewCubes[I][J] := nil;
+
+  for var I := 0 to 3 do
+    FActiveCubes [I] := nil;
+  for var I := 0 to 3 do
+    FGhostCubes [I] := nil;
 end;
 
 procedure TForm1.ClearLines;
@@ -1423,8 +1519,11 @@ begin
   for i := 0 to 3 do
   begin
     p := cells[i];
-    FGhostCubes[i].Visible := True;
-    FGhostCubes[i].Position.Point := Point3D(GhostPiece.X + p.X, (GhostPiece.Y + p.Y), 0);
+    if FGhostCubes[i] <> nil then
+    begin
+      FGhostCubes[i].Visible := True;
+      FGhostCubes[i].Position.Point := Point3D(GhostPiece.X + p.X, (GhostPiece.Y + p.Y), 0);
+    end;
   end;
 end;
 
@@ -1486,7 +1585,8 @@ begin
         if Assigned(FActiveCubes[i]) then
           try
             FActiveCubes[i].Visible := False;
-          except end;
+          except
+          end;
 
       // Timer beenden, damit keine DoOnTick-Aufrufe mehr kommen
       if Assigned(FTimer) and FTimer.Started then
@@ -1494,6 +1594,8 @@ begin
 
       FinalScoreLabel.Text := IntToStr(FScore);
       Image4.Visible := true;
+
+      Clear;
     end);
 end;
 
