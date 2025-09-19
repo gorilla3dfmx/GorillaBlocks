@@ -595,7 +595,6 @@ begin
         float iTime = mod(mod(_TimeInfo.y, 360.0) * 0.2, 0.5);
         l_TexOfs += vec2(0.0, iTime);
         DATA.BaseColor.rgb = tex2D(_Texture0, l_TexOfs).rgb;
-        DATA.BaseColor.rgb += tex2D(_ReflectionTexture, DATA.TexCoord0.xy).rgb;
       }
       ''';
     LFloorMat.SurfaceShader := LStr;
