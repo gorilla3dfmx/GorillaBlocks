@@ -71,6 +71,7 @@ type
     FGorilla : TGorillaViewport;
     FTimer   : TGorillaTimer;
     FAssetsPath : String;
+    FDestroying : Boolean;
 
     FTarget  : TDummy;
     FCamera  : TGorillaCamera;
@@ -166,6 +167,8 @@ type
     FDropStartPos: TArray<TVector3D>;
     FDropEndPos: TArray<TVector3D>;
     FDropDelay: TArray<Single>; // individuelle Verzögerung pro Würfel
+
+    FElectricShader : TStringList;
 
     procedure ShuffleBag;
     procedure RefillBag;
@@ -484,7 +487,7 @@ begin
   FGorilla.Touch.GestureManager := GestureManager1;
   FGorilla.Touch.StandardGestures := [TStandardGesture.sgLeft,
     TStandardGesture.sgRight, TStandardGesture.sgUp, TStandardGesture.sgDown];
-  FGorilla.Touch.InteractiveGestures := [TInteractiveGesture.LongTap];
+  FGorilla.Touch.InteractiveGestures := [TInteractiveGesture.Rotate];
   FGorilla.OnGesture := ViewportGesture;
   FGorilla.OnTap := ViewportTap;
 
@@ -584,9 +587,13 @@ begin
   LFloor.RotationAngle.X := 90;
   LFloor.SetSize(50, 50, 1);
   LFloor.Position.Point := Point3D(10, 22.5, 10);
-
+{$IFDEF ANDROID}
+  // Not sure, why a default material is needed on Android
+  var LFloorMat := TGorillaDefaultMaterialSource.Create(LFloor);
+{$ELSE}
   // Ein Untergrund mit bewegender Textur, die stets durchläuft
   var LFloorMat := TGorillaLambertMaterialSource.Create(LFloor);
+{$ENDIF}
   LFloorMat.Parent := LFloor;
   LFloorMat.UseTexture0 := true;
   LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
@@ -610,6 +617,86 @@ begin
   end;
 
   LFloor.MaterialSource := LFloorMat;
+
+  // https://www.shadertoy.com/view/4scGWj
+  FElectricShader := TStringList.Create();
+  FElectricShader.Text :=
+    '''
+    vec3 random3(vec3 c) {
+      float j = 4096.0*sin(dot(c,vec3(17.0, 59.4, 15.0)));
+      vec3 r;
+      r.z = fract(512.0*j);
+      j *= .125;
+      r.x = fract(512.0*j);
+      j *= .125;
+      r.y = fract(512.0*j);
+      return r-0.5;
+    }
+
+    const float F3 =  0.3333333;
+    const float G3 =  0.1666667;
+
+    float simplex3d(vec3 p) {
+       vec3 s = floor(p + dot(p, vec3(F3)));
+       vec3 x = p - s + dot(s, vec3(G3));
+
+       vec3 e = step(vec3(0.0), x - x.yzx);
+       vec3 i1 = e*(1.0 - e.zxy);
+       vec3 i2 = 1.0 - e.zxy*(1.0 - e);
+
+       vec3 x1 = x - i1 + G3;
+       vec3 x2 = x - i2 + 2.0*G3;
+       vec3 x3 = x - 1.0 + 3.0*G3;
+
+       vec4 w, d;
+
+       w.x = dot(x, x);
+       w.y = dot(x1, x1);
+       w.z = dot(x2, x2);
+       w.w = dot(x3, x3);
+
+       w = max(0.6 - w, 0.0);
+
+       d.x = dot(random3(s), x);
+       d.y = dot(random3(s + i1), x1);
+       d.z = dot(random3(s + i2), x2);
+       d.w = dot(random3(s + 1.0), x3);
+
+       w *= w;
+       w *= w;
+       d *= w;
+
+       return dot(d, vec4(52.0));
+    }
+
+    float noise(vec3 m) {
+        return   0.5333333*simplex3d(m)
+          +0.2666667*simplex3d(2.0*m)
+          +0.1333333*simplex3d(4.0*m)
+          +0.0666667*simplex3d(8.0*m);
+    }
+
+    void SurfaceShader(inout TLocals DATA){
+      float iTime = mod(_TimeInfo.y, 360.0);
+
+      vec3 p3 = vec3(DATA.TexCoord0.xy, iTime);
+      float intensity = noise(vec3(p3 + 12.0)) * 10.0;
+      vec2 uv = DATA.TexCoord0.xy;
+      uv = uv * 2.0 - 1.0;
+
+      float t = clamp((uv.x * -uv.x * 0.01) + 0.15, 0., 1.);
+      float y = abs(intensity * -t + uv.y * 0.5);
+
+      float g = pow(y, 0.2);
+
+      vec3 col = vec3(1.70, 1.48, 1.78);
+      col = col * -g + col;
+      col = col * col;
+      col = col * col;
+
+      DATA.BaseColor.rgb += col;
+    }
+    ''';
 
   // --- Visual borders / background for board size ---
   borderMat := TGorillaLambertMaterialSource.Create(FGorilla);
@@ -734,6 +821,8 @@ var
   x,y: Integer;
   amplitude: Single;
 begin
+  if FDestroying then
+    Exit;
   // Wenn GameOver gesetzt ist, keine Spiel-Logik mehr (aber noch Animation beenden lassen)
   if FGameOver and not FIsAnimating then
     Exit;
@@ -1080,6 +1169,7 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
+  FDestroying := true;
   Clear;
 
   if Assigned(FTimer) then
@@ -1097,14 +1187,14 @@ procedure TForm1.ViewportTap(Sender: TObject; const Point: TPointF);
 var LVwPrtCtr : TPointF;
 begin
   LVwPrtCtr := TPointF.Create(FGorilla.Width / 2, FGorilla.Height / 2);
-  if Point.X < LVwPrtCtr.X then
+  if Point.X > LVwPrtCtr.X then
   begin
     FRightHeld := True;
     FIsInitialMove := False;
     FMoveTimer := 0;
     FMoveIntensity := 1;
   end
-  else if Point.X > LVwPrtCtr.X then
+  else if Point.X < LVwPrtCtr.X then
   begin
     FLeftHeld := True;
     FIsInitialMove := False;
@@ -1155,7 +1245,7 @@ begin
         FLeftHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
-        FMoveIntensity := 10;
+        FMoveIntensity := 1;
       end;
 
     sgiRight :
@@ -1163,7 +1253,7 @@ begin
         FRightHeld := True;
         FIsInitialMove := False;
         FMoveTimer := 0;
-        FMoveIntensity := 10;
+        FMoveIntensity := 1;
       end;
 
     // Piece Rotation
@@ -1180,18 +1270,14 @@ begin
       end;
 
     // Dropping
-    igiLongTap :
+    igiRotate :
       begin
-        // Hard Drop
-        FHardDrop := true;
-        FHardDropExtraPoints := true;
-      end;
-
-    igiDoubleTap :
-      begin
-        // Hard Drop
-        FHardDrop := true;
-        FHardDropExtraPoints := true;
+        if (TInteractiveGestureFlag.gfEnd in EventInfo.Flags) then
+        begin
+          // Hard Drop
+          FHardDrop := true;
+          FHardDropExtraPoints := true;
+        end;
       end;
   end;
 end;
@@ -1274,6 +1360,9 @@ end;
 procedure TForm1.SpawnPiece;
 begin
   if FGameOver then Exit;
+
+  FHardDrop := false;
+  FHardDropExtraPoints := false;
 
   // Nimm das nächste Piece aus der Vorschau (die Vorschau wurde aus der Bag gefüllt)
   FCurrentPiece.Kind := FNextPieces[0];
@@ -1665,6 +1754,9 @@ begin
 
         // Referenz in das Animationsarray übernehmen
         FAnimatedCubes[idx] := cube;
+        var LMatSrc := TGorillaDefaultMaterialSource(FAnimatedCubes[idx].MaterialSource);
+        LMatSrc.SurfaceShader := FElectricShader;
+        LMatSrc.MeasureTime := true;
 
         Inc(idx);
       end;
@@ -1737,6 +1829,9 @@ begin
     for k := 0 to 3 do
     begin
       p := cells[k];
+      if (FPreviewCubes[slot,k] = nil) then
+        Continue;
+
       // Positionierung: wir zentrieren jede 4x4-Matrix innerhalb eines kleinen Vorschau-Box
       // Verschiebe X und Y so, dass es gut neben dem Grid steht
       FPreviewCubes[slot,k].Visible := True;
