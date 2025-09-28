@@ -6,7 +6,7 @@ interface
 {$DEFINE SKYBOX}
 
 {$IFDEF ANDROID}
-  {$UNDEF AUDIO}
+  { $UNDEF AUDIO}
   {$UNDEF SKYBOX}
 {$ENDIF}
 
@@ -20,7 +20,7 @@ uses
   Gorilla.Audio.FMOD,
 {$ENDIF}
   Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer, Gorilla.Light,
-  Gorilla.Material.Default, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
+  Gorilla.Material.Default, Gorilla.Mesh, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
   Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn;
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
@@ -35,7 +35,7 @@ type
 
   TRotation = 0..3;
 
-  TPieceMatrix = array[0..3,0..3] of Boolean;
+  TPieceMatrix = array[0..3, 0..3] of Boolean;
 
   TPiece = record
     Kind: TCellKind;
@@ -45,7 +45,10 @@ type
   end;
 
   TBoard = array[0..ROWS-1, 0..COLS-1] of TCellKind;
-  TCubes = array[0..ROWS-1, 0..COLS-1] of TGorillaCube;
+  TCubes = array[0..ROWS-1, 0..COLS-1] of TGorillaMeshInstance;
+
+  PCubeArray = ^TCubeArray;
+  TCubeArray = Array[TCellKind] of TGorillaCube;
 
   TForm1 = class(TForm)
     Image1: TImage;
@@ -93,10 +96,16 @@ type
     FWithGesture : Boolean;
     FCurrentPiece :TPiece;
 
+    // Wir arbeiten mit instances für Cubes, da es performanter ist
+    FTemplates: TCubeArray;
+    FTemplatesElectric: TCubeArray;
+    FGhostTemplate : TGorillaCube;
+
     // Aktives Tetromino als 4 Würfel
-    FActiveCubes : array[0..3] of TGorillaCube;
+    FActiveCubes : array[0..3] of TGorillaMeshInstance;
+
     // Ghost-Würfel für die Vorschau
-    FGhostCubes : array[0..3] of TGorillaCube;
+    FGhostCubes : array[0..3] of TGorillaMeshInstance;
 
     // Gravitation
     FPieceDropTimer : Single;   // Sek. seit letztem Fall
@@ -122,7 +131,7 @@ type
     // --- Neue Variablen für die Animation ---
     FAnimationTimer: Single; // Timer für die Animationsdauer
     FIsAnimating: Boolean; // Statusvariable, die anzeigt, ob eine Animation läuft
-    FAnimatedCubes: TArray<TGorillaCube>; // Array für die zu animierenden Würfel
+    FAnimatedCubes: TArray<TGorillaMeshInstance>; // Array für die zu animierenden Würfel
     FAnimatedVelocities: TArray<TVector3D>; // Array für die Startgeschwindigkeiten
     FAnimatedBasePos: TArray<TPoint3D>; // Ursprungspositionen für Vibration
     FAnimatedVibrateDirs: TArray<TVector3D>; // Richtungen der Vibration pro Würfel
@@ -148,7 +157,7 @@ type
     FShakeTimer: Single;
     FShakeDuration: Single;
     FShakeOscillations: Integer; // wie oft schwingt es hin und her
-    FShakingCubes: TArray<TGorillaCube>;
+    FShakingCubes: TArray<TGorillaMeshInstance>;
     FShakeOrigPos: TArray<TVector3D>;
     FShakeAmplitudes: TArray<TVector3D>;
     FShakeBaseFreqs: TArray<TVector3D>;
@@ -163,7 +172,7 @@ type
     FIsDropping: Boolean;
     FDropTimer: Single;
     FDropDuration: Single;
-    FDroppingCubes: TArray<TGorillaCube>;
+    FDroppingCubes: TArray<TGorillaMeshInstance>;
     FDropStartPos: TArray<TVector3D>;
     FDropEndPos: TArray<TVector3D>;
     FDropDelay: TArray<Single>; // individuelle Verzögerung pro Würfel
@@ -184,7 +193,6 @@ type
     procedure RedrawActive;
     procedure RedrawGhost;
     procedure ClearLines;
-    procedure StepGame;
     procedure UpdateStats;
     procedure UpdatePreview;
 
@@ -417,7 +425,10 @@ begin
       // Aktive Würfel verstecken
       for var i := 0 to 3 do
         if Assigned(FActiveCubes[i]) then
-          FActiveCubes[i].Visible := False;
+        begin
+          FActiveCubes[i].OwnerMesh.DeleteInstance(FActiveCubes[i].Index);
+          FActiveCubes[i] := nil;
+        end;
 
       // Thread-sichere GameOver-Handling
       HandleGameOver;
@@ -532,7 +543,7 @@ begin
   // Create a dummy as camera target at the board center
   FTarget := TDummy.Create(FGorilla);
   FTarget.Parent := FGorilla;
-  FTarget.Position.Point := Point3D(COLS/2, ROWS/2, 0); // forward declare via consts below
+  FTarget.Position.Point := Point3D(COLS / 2, ROWS / 2, 0); // forward declare via consts below
 
   // Create a Gorilla camera as child of target (orbit-style) and link to viewport
   FCamera := TGorillaCamera.Create(FTarget);
@@ -741,33 +752,71 @@ begin
   backPlane.SetHitTestValue(false);
   backPlane.Visible := True;
 
-  // Create active & ghost cubes
-  for i := 0 to 3 do
+  // Templates für Instancing erzeugen
+  for var ck := Low(TCellKind) to High(TCellKind) do
   begin
-    FActiveCubes[i] := TGorillaCube.Create(FGorilla);
-    FActiveCubes[i].Parent := FGorilla;
-    FActiveCubes[i].SetSize(0.98,0.98,0.98);
-    FActiveCubes[i].Visible := False;
-    FActiveCubes[i].SetHitTestValue(false);
-  end;
+    FTemplates[ck] := TGorillaCube.Create(FGorilla);
+    FTemplates[ck].Parent := FGorilla;
+    FTemplates[ck].SetSize(0.98, 0.98, 0.98);
+    FTemplates[ck].Visible := true;
+    FTemplates[ck].SetHitTestValue(false);
 
-  for i := 0 to 3 do
-  begin
-    FGhostCubes[i] := TGorillaCube.Create(FGorilla);
-    FGhostCubes[i].Parent := FGorilla;
-    FGhostCubes[i].SetSize(0.98,0.98,0.98);
-    FGhostCubes[i].Visible := False;
-    FGhostCubes[i].SetOpacityValue(0.5);
-    FGhostCubes[i].SetHitTestValue(false);
+    if ck = ckNone then
+      FTemplates[ck].SetOpacityValue(0);
 
     var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
-    mat.Parent := FGorilla;
-    mat.Diffuse := $FF888888;
-    mat.Emissive := 0;
+    mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+    mat.UseLighting := true;
+    mat.UseSpecular := true;
     mat.UseTexture0 := false;
-
-    FGhostCubes[i].MaterialSource := mat;
+    mat.Parent := FGorilla;
+    mat.Diffuse  := $FF0D1224;
+    mat.Emissive := (PieceColors[ck] and $00FFFFFF) or ActivePieceEmission;
+    FTemplates[ck].MaterialSource := mat;
   end;
+
+  // Default cubes with electric effect
+  for var ck := Low(TCellKind) to High(TCellKind) do
+  begin
+    FTemplatesElectric[ck] := TGorillaCube.Create(FGorilla);
+    FTemplatesElectric[ck].Parent := FGorilla;
+    FTemplatesElectric[ck].SetSize(0.98, 0.98, 0.98);
+    FTemplatesElectric[ck].Visible := true;
+    FTemplatesElectric[ck].SetHitTestValue(false);
+
+    if ck = ckNone then
+      FTemplatesElectric[ck].SetOpacityValue(0);
+
+    var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+    mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
+    mat.UseLighting := true;
+    mat.UseSpecular := true;
+    mat.UseTexture0 := false;
+    mat.Parent := FGorilla;
+    mat.Diffuse  := $FF0D1224;
+    mat.Emissive := (PieceColors[ck] and $00FFFFFF) or ActivePieceEmission;
+
+    mat.MeasureTime := true;
+    mat.SurfaceShader := FElectricShader;
+
+    FTemplatesElectric[ck].MaterialSource := mat;
+  end;
+
+  // Ghost template erzeugen
+  FGhostTemplate := TGorillaCube.Create(FGorilla);
+  FGhostTemplate.Parent := FGorilla;
+  FGhostTemplate.SetSize(0.98,0.98,0.98);
+  FGhostTemplate.Visible := true;
+  FGhostTemplate.SetOpacityValue(0.5);
+  FGhostTemplate.SetHitTestValue(false);
+
+  var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
+  mat.Parent := FGorilla;
+  mat.Diffuse := $FF888888;
+  mat.Emissive := 0;
+  mat.UseTexture0 := false;
+
+  FGhostTemplate.MaterialSource := mat;
 
   // --- Preview für die nächsten 2 Stücke ---
   // Positioniert die Vorschau rechts außerhalb des Boards
@@ -899,13 +948,14 @@ begin
         pos.Z := pos.Z + FAnimatedVelocities[i].Z * DT * 5;
         FAnimatedCubes[i].Position.Point := pos;
 
+        (*
         // Skalierung verringern, um das Verschwinden zu simulieren
         FAnimatedCubes[i].SetSize(Max(0.01, FAnimatedCubes[i].Scale.X - DT * 1.5),
                                  Max(0.01, FAnimatedCubes[i].Scale.Y - DT * 1.5),
                                  Max(0.01, FAnimatedCubes[i].Scale.Z - DT * 1.5));
-
         // Würfel langsam transparenter machen
         FAnimatedCubes[i].SetOpacityValue(Max(0, FAnimatedCubes[i].Opacity - DT * 2));
+        *)
       end;
     end;
 
@@ -919,10 +969,7 @@ begin
       begin
         if Assigned(FAnimatedCubes[i]) then
         begin
-          try
-            FAnimatedCubes[i].Free;
-          except
-          end;
+          FAnimatedCubes[i].OwnerMesh.DeleteInstance(FAnimatedCubes[i].Index);
           FAnimatedCubes[i] := nil;
         end;
       end;
@@ -1283,76 +1330,68 @@ begin
 end;
 
 procedure TForm1.InitBoard;
-var x,y: Integer;
-    cube: TGorillaCube;
-    mat: TGorillaDefaultMaterialSource;
+var x,y  : Integer;
+    cube : TGorillaMeshInstance;
+    mat  : TGorillaDefaultMaterialSource;
 begin
   for y := 0 to ROWS-1 do
     for x := 0 to COLS-1 do
     begin
-      FBoard[y,x] := ckNone;
+      FBoard[y, x] := ckNone;
 
-      cube := TGorillaCube.Create(FGorilla);
-      cube.Parent := FGorilla;
+      cube := FTemplates[ckNone].AddInstanceItem(Format('%d_%d', [X, Y]));
       cube.Position.Point := Point3D(x, y, 0);
-      cube.SetSize(0.94,0.94,0.94);
-      cube.SetHitTestValue(false);
-
-      mat := TGorillaBlinnMaterialSource.Create(FGorilla);
-      mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
-      mat.UseLighting := true;
-      mat.UseSpecular := true;
-      mat.UseTexture0 := false;
-      mat.Parent := FGorilla;
-      mat.Diffuse  := $FF0D1224;   // dunkel
-      mat.Emissive := $00000000;   // aus
-      cube.MaterialSource := mat;
-
-      cube.Visible := False;
-      FCubes[y,x] := cube;
+      cube.Scale.Point := Point3D(0.95, 0.95, 0.95);
+      FCubes[y, x] := cube;
     end;
 end;
 
 procedure TForm1.RedrawBoard;
-var x,y: Integer; mat: TGorillaDefaultMaterialSource;
+var x,y : Integer;
+    mat : TGorillaDefaultMaterialSource;
 begin
-  for y := 0 to ROWS-1 do
-    for x := 0 to COLS-1 do
+  for y := 0 to ROWS - 1 do
+    for x := 0 to COLS - 1 do
     begin
-      if FBoard[y,x]<>ckNone then
+      if FBoard[y, x] <> ckNone then
       begin
-        if not Assigned(FCubes[y,x]) then
+        // Falls der Würfeltyp sich geändert hat
+        if Assigned(FCubes[y, x])
+        and (FCubes[y, x].OwnerMesh <> FTemplates[FBoard[y, x]]) then
+        begin
+          FCubes[y, x].OwnerMesh.DeleteInstance(FCubes[y, x].Index);
+          FCubes[y, x] := nil;
+        end;
+
+        if not Assigned(FCubes[y, x]) then
         begin
           // Falls ein Würfel fehlt (z.B. nach dem Verschieben), erstelle ihn neu
-          FCubes[y,x] := TGorillaCube.Create(FGorilla);
-          FCubes[y,x].Parent := FGorilla;
-          FCubes[y,x].Position.Point := Point3D(x, y, 0);
-          FCubes[y,x].SetSize(0.94,0.94,0.94);
-          FCubes[y,x].SetHitTestValue(false);
+          FCubes[y, x] := FTemplates[FBoard[y, x]].AddInstanceItem(Format('%d_%d', [X, Y]));
         end;
 
-        FCubes[y,x].Visible := True;
-        mat := TGorillaDefaultMaterialSource(FCubes[y,x].MaterialSource);
-        if not Assigned(mat) then
-        begin
-          mat := TGorillaBlinnMaterialSource.Create(FGorilla);
-          mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
-          mat.UseLighting := true;
-          mat.UseSpecular := true;
-          mat.UseTexture0 := false;
-          mat.Parent := FGorilla;
-          mat.Diffuse  := $FFFD1224;
-          FCubes[y,x].MaterialSource := mat;
-        end;
-
-        mat.Emissive := PieceColors[FBoard[y,x]];
+        FCubes[y, x].Position.Point := Point3D(x, y, 0);
+        FCubes[y, x].Scale.Point := Point3D(0.95, 0.95, 0.95);
       end
       else
       begin
-        if Assigned(FCubes[y,x]) then
+        if Assigned(FCubes[y, x]) then
         begin
-          FCubes[y,x].Visible := False;
+          if (FCubes[y, x].OwnerMesh <> FTemplates[FBoard[y, x]]) then
+          begin
+            // Vorherige Instanz löschen
+            FCubes[y, x].OwnerMesh.DeleteInstance(FCubes[y, x].Index);
+            FCubes[y, x] := nil;
+          end;
         end;
+
+        if not Assigned(FCubes[y, x]) then
+        begin
+          // Neue NONE Instanz erstellen
+          FCubes[y, x] := FTemplates[ckNone].AddInstanceItem(Format('%d_%d', [X, Y]));
+        end;
+
+        FCubes[y, x].Position.Point := Point3D(x, y, 0);
+        FCubes[y, x].Scale.Point := Point3D(0.95, 0.95, 0.95);
       end;
     end;
 end;
@@ -1386,22 +1425,6 @@ begin
   end;
 
   RedrawActive;
-end;
-
-
-procedure TForm1.StepGame;
-begin
-  // einfache Gravitation: ein Feld runter
-  if (FActiveY<ROWS-1) and (FBoard[FActiveY+1, FActiveX]=ckNone) then
-    Inc(FActiveY)
-  else
-  begin
-    // Stück fixieren
-    FBoard[FActiveY,FActiveX] := FActivePiece;
-    SpawnPiece;
-  end;
-
-  RedrawBoard;
 end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
@@ -1506,38 +1529,23 @@ end;
 
 procedure TForm1.RedrawActive;
 var cells: TArray<TPoint>;
-    i: Integer; p: TPoint; col: TAlphaColor;
+    i: Integer;
+    p: TPoint;
+    col: TAlphaColor;
     mat: TGorillaDefaultMaterialSource;
 begin
   cells := CellsOf(FCurrentPiece.Matrix);
   col := PieceColors[FCurrentPiece.Kind];
 
-  for i:=0 to 3 do
+  for i := 0 to 3 do
   begin
     p := cells[i];
+    if FActiveCubes[i] = nil then
+      FActiveCubes[i] := Self.FTemplates[FCurrentPiece.Kind].AddInstanceItem('ActiveCube' + IntToStr(i));
+
     if FActiveCubes[i] <> nil then
     begin
-      FActiveCubes[i].Visible := True;
-      FActiveCubes[i].Position.Point :=
-        Point3D(FCurrentPiece.X + p.X, (FCurrentPiece.Y + p.Y), 0);
-
-      if not Assigned(FActiveCubes[i].MaterialSource) then
-      begin
-        mat := TGorillaBlinnMaterialSource.Create(FGorilla);
-        mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
-        mat.UseLighting := true;
-        mat.UseSpecular := true;
-        mat.UseTexture0 := false;
-        mat.Parent := FGorilla;
-        mat.Diffuse  := $FF0D1224;
-        mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
-        FActiveCubes[i].MaterialSource := mat;
-      end
-      else
-      begin
-        mat := TGorillaDefaultMaterialSource(FActiveCubes[i].MaterialSource);
-        mat.Emissive := (col and $00FFFFFF) or ActivePieceEmission;
-      end;
+      FActiveCubes[i].Position.Point := Point3D(FCurrentPiece.X + p.X, (FCurrentPiece.Y + p.Y), 0);
     end;
   end;
 
@@ -1561,13 +1569,19 @@ begin
       FBoard[FCurrentPiece.Y + p.Y, FCurrentPiece.X + p.X] := FCurrentPiece.Kind;
   end;
 
-  // Aktive Würfel verstecken bis zum nächsten Teil
-  for i:=0 to 3 do if Assigned(FActiveCubes[i]) then
-    FActiveCubes[i].Visible := False;
+  for i := 0 to 3 do
+    if Assigned(FActiveCubes[i]) then
+    begin
+      FActiveCubes[i].OwnerMesh.DeleteInstance(FActiveCubes[i].Index);
+      FActiveCubes[i] := nil;
+    end;
 
-  // Ghost-Würfel verstecken
-  for i := 0 to 3 do if Assigned(FGhostCubes[i]) then
-    FGhostCubes[i].Visible := False;
+  for i := 0 to 3 do
+    if Assigned(FGhostCubes[i]) then
+    begin
+      FGhostCubes[i].OwnerMesh.DeleteInstance(FGhostCubes[i].Index);
+      FGhostCubes[i] := nil;
+    end;
 
   // Board neu zeichnen (damit FCubes existieren / sichtbar sind)
   RedrawBoard;
@@ -1596,8 +1610,13 @@ begin
 
   for var I := 0 to 3 do
     FActiveCubes [I] := nil;
-  for var I := 0 to 3 do
-    FGhostCubes [I] := nil;
+
+  for var i := 0 to 3 do
+    if Assigned(FGhostCubes[i]) then
+    begin
+      FGhostCubes[i].OwnerMesh.DeleteInstance(FGhostCubes[i].Index);
+      FGhostCubes [I] := nil;
+    end;
 end;
 
 procedure TForm1.ClearLines;
@@ -1697,10 +1716,13 @@ begin
   for i := 0 to 3 do
   begin
     p := cells[i];
+
+    if FGhostCubes[i] = nil then
+      FGhostCubes[i] := FGhostTemplate.AddInstanceItem('Ghost' + IntToStr(i));
+
     if FGhostCubes[i] <> nil then
     begin
-      FGhostCubes[i].Visible := True;
-      FGhostCubes[i].Position.Point := Point3D(GhostPiece.X + p.X, (GhostPiece.Y + p.Y), 0);
+      FGhostCubes[i].Position.Point := Point3D(GhostPiece.X + p.X, GhostPiece.Y + p.Y, 0);
     end;
   end;
 end;
@@ -1708,7 +1730,7 @@ end;
 procedure TForm1.StartLineClearAnimation(const Lines: TArray<Integer>);
 var
   y, x: Integer;
-  cube: TGorillaCube;
+  cube: TGorillaMeshInstance;
   idx: Integer;
 begin
   FIsAnimating := True;
@@ -1728,7 +1750,7 @@ begin
     for x := 0 to COLS - 1 do
     begin
       cube := FCubes[y, x];
-      if Assigned(cube) and cube.Visible then
+      if Assigned(cube) and (cube.OwnerMesh <> FTemplates[ckNone]) then
       begin
         // Basisposition speichern (für Vibration)
         FAnimatedBasePos[idx] := cube.Position.Point;
@@ -1752,11 +1774,16 @@ begin
 
         FAnimatedPhases[idx] := RandomRange(0, 31415) / 5000; // 0..~6.283 (radians)
 
+        // Lösche Instanz und erzeuge eine neu mit dem Electric Effekt
+        var LPrevPos := cube.Position.Point;
+        var bs := FBoard[y, x];
+        cube.OwnerMesh.DeleteInstance(cube.Index);
+        FCubes[y, x] := nil;
+
         // Referenz in das Animationsarray übernehmen
-        FAnimatedCubes[idx] := cube;
-        var LMatSrc := TGorillaDefaultMaterialSource(FAnimatedCubes[idx].MaterialSource);
-        LMatSrc.SurfaceShader := FElectricShader;
-        LMatSrc.MeasureTime := true;
+        FAnimatedCubes[idx] := FTemplatesElectric[bs].AddInstanceItem(
+          Format('%d_%d', [X, Y]));
+        FAnimatedCubes[idx].Position.Point := LPrevPos;
 
         Inc(idx);
       end;
@@ -1790,7 +1817,8 @@ begin
       for i := 0 to 3 do
         if Assigned(FActiveCubes[i]) then
           try
-            FActiveCubes[i].Visible := False;
+            FActiveCubes[i].OwnerMesh.DeleteInstance(FActiveCubes[i].Index);
+            FActiveCubes[i] := nil;
           except
           end;
 
@@ -1901,7 +1929,7 @@ end;
 procedure TForm1.StartShakeBoard;
 var
   y, x, idx: Integer;
-  cube: TGorillaCube;
+  cube: TGorillaMeshInstance;
   amp, baseFreq: TVector3D;
 begin
   // Parameter: Dauer und Anzahl der kompletten Schwingungen (Hin+Her = 1 Oscillation)
@@ -1914,7 +1942,8 @@ begin
   SetLength(FShakingCubes, 0);
   for y := 0 to ROWS - 1 do
     for x := 0 to COLS - 1 do
-      if (FBoard[y,x] <> ckNone) and Assigned(FCubes[y,x]) and FCubes[y,x].Visible then
+      if (FBoard[y, x] <> ckNone) and Assigned(FCubes[y, x]) then
+//      and FCubes[FActiveBoardSide, y, x].Visible then
       begin
         idx := Length(FShakingCubes);
         SetLength(FShakingCubes, idx + 1);
@@ -1983,7 +2012,7 @@ end;
 procedure TForm1.StartDropAnimation;
 var
   x, y, idx, dropCount: Integer;
-  cube: TGorillaCube;
+  cube: TGorillaMeshInstance;
   startPos, endPos: TVector3D;
   removedFlag: array[0..ROWS-1] of Boolean;
 begin
@@ -2002,7 +2031,7 @@ begin
       FBoard[y, x] := ckNone;
       if Assigned(FCubes[y, x]) then
       begin
-        FCubes[y, x].Visible := False;
+        //FCubes[y, x].Visible := False;
         FCubes[y, x] := nil;
       end;
     end;

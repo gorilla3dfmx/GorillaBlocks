@@ -5,10 +5,11 @@
         <FrameworkType>FMX</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Android64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>693395</TargetedPlatforms>
         <AppType>Application</AppType>
         <MainSource>GorillaTetris.dpr</MainSource>
+        <ProjectName Condition="'$(ProjectName)'==''">GorillaTetris</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -611,12 +612,42 @@
                 </DeployFile>
                 <DeployFile LocalName="..\..\source\packages\lib\fmod\android\arm64-v8a\libfmodL.so" Configuration="Debug" Class="File">
                     <Platform Name="Android64">
+                        <RemoteDir>library\lib\arme64-v8a\</RemoteDir>
                         <RemoteName>libfmodL.so</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\..\source\packages\lib\fmod\android\arm64-v8a\libfmodL.so" Configuration="Release" Class="File">
                     <Platform Name="Android64">
+                        <RemoteDir>library\lib\arme64-v8a\</RemoteDir>
+                        <RemoteName>libfmodL.so</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\source\packages\lib\fmod\android\armeabi-v7a\libfmodL.so" Configuration="Debug" Class="File">
+                    <Platform Name="Android64">
+                        <RemoteDir>library\lib\armeabi-v7a\</RemoteDir>
+                        <RemoteName>libfmodL.so</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\source\packages\lib\fmod\android\armeabi-v7a\libfmodL.so" Configuration="Release" Class="File">
+                    <Platform Name="Android64">
+                        <RemoteDir>library\lib\armeabi-v7a\</RemoteDir>
+                        <RemoteName>libfmodL.so</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\source\packages\lib\fmod\android\armeabi\libfmodL.so" Configuration="Debug" Class="File">
+                    <Platform Name="Android64">
+                        <RemoteDir>library\lib\armeabi\</RemoteDir>
+                        <RemoteName>libfmodL.so</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\source\packages\lib\fmod\android\armeabi\libfmodL.so" Configuration="Release" Class="File">
+                    <Platform Name="Android64">
+                        <RemoteDir>library\lib\armeabi\</RemoteDir>
                         <RemoteName>libfmodL.so</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
