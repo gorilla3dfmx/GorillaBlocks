@@ -1,13 +1,12 @@
-unit MainForm;
+ï»¿unit MainForm;
 
 interface
 
 {$DEFINE AUDIO}
-{$DEFINE SKYBOX}
 
 {$IFDEF ANDROID}
-  { $UNDEF AUDIO}
-  {$UNDEF SKYBOX}
+  // By default we deactivate audio, because on some devices it causes issues.
+  {$UNDEF AUDIO}
 {$ENDIF}
 
 uses
@@ -20,15 +19,15 @@ uses
   Gorilla.Audio.FMOD,
 {$ENDIF}
   Gorilla.Viewport, Gorilla.Camera, Gorilla.Utils.Timer, Gorilla.Light,
-  Gorilla.Material.Default, Gorilla.Mesh, Gorilla.Cube, Gorilla.SkyBox, Gorilla.Plane,
+  Gorilla.Material.Default, Gorilla.Mesh, Gorilla.Cube, Gorilla.Plane,
   Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn;
 
 // Basic Tetris constants so CreateGorillaScene compiles (board center usage)
 const
-  ROWS       = 20;   // Anzahl Reihen im Spielfeld
-  COLS       = 10;   // Anzahl Spalten im Spielfeld
-  CUBE_SIZE  = 1.0;  // Kantenlänge eines Blocks in deiner 3D-Szene
-  CUBE_SPACE = 0.05; // kleiner Abstand zwischen den Blöcken
+  ROWS       = 20;   // Number of rows in the gaming field
+  COLS       = 10;   // Number of columns in the gaming field
+  CUBE_SIZE  = 1.0;  // Size of each cube placeable
+  CUBE_SPACE = 0.05; // A tiny space between each cube for a more cubish look of the pieces.
 
 type
   TCellKind = (ckNone, ckI, ckO, ckT, ckS, ckZ, ckJ, ckL);
@@ -38,10 +37,10 @@ type
   TPieceMatrix = array[0..3, 0..3] of Boolean;
 
   TPiece = record
-    Kind: TCellKind;
-    Matrix: TPieceMatrix;
-    X, Y: Integer;
-    Rot: TRotation;
+    Kind   : TCellKind;
+    Matrix : TPieceMatrix;
+    X, Y   : Integer;
+    Rot    : TRotation;
   end;
 
   TBoard = array[0..ROWS-1, 0..COLS-1] of TCellKind;
@@ -96,30 +95,31 @@ type
     FWithGesture : Boolean;
     FCurrentPiece :TPiece;
 
-    // Wir arbeiten mit instances für Cubes, da es performanter ist
+    // We're working with instancing of template cubes, which is much faster,
+    // than having 10 * 20 cubes rendered on each cycle.
     FTemplates: TCubeArray;
     FTemplatesElectric: TCubeArray;
     FGhostTemplate : TGorillaCube;
 
-    // Aktives Tetromino als 4 Würfel
+    // Active tetromino as 4 cubes
     FActiveCubes : array[0..3] of TGorillaMeshInstance;
 
-    // Ghost-Würfel für die Vorschau
+    // Ghost cubes preview for the current piece
     FGhostCubes : array[0..3] of TGorillaMeshInstance;
 
     // Gravitation
-    FPieceDropTimer : Single;   // Sek. seit letztem Fall
-    FPieceDropDelay : Single;   // Sek. pro Zeile (Levelgeschwindigkeit)
+    FPieceDropTimer : Single;   // Seconds since falling
+    FPieceDropDelay : Single;   // Seconds per line (speed of level)
 
-    // Zusätzliche Variablen für DAS/ARR
-    FMoveTimer : Single; // Timer für horizontale Bewegung
-    FMoveDelay : Single; // Verzögerung vor erster Wiederholung (DAS)
-    FMoveRate : Single; // Zeit zwischen Wiederholungen (ARR)
+    // Additional variables for DAS/ARR
+    FMoveTimer : Single; // Timer for horizontal movement
+    FMoveDelay : Single; // Delay bevor the first repeat (DAS)
+    FMoveRate  : Single; // Time between repetition (ARR)
     FMoveIntensity : Integer;
-    FIsInitialMove : Boolean; // Flag, um erste Bewegung zu markieren
-    FGameOver : Boolean; // << Game-Over-Statusvariable
+    FIsInitialMove : Boolean; // Flag, to mark the first movement
+    FGameOver : Boolean;      // << Game-Over state variable - if this is true, the game ends
 
-    // --- Neue Variablen für Punkte und Level ---
+    // --- Linked labels for showing gaming stats
     FScoreLabel: TLabel;
     FLevelLabel: TLabel;
     FLinesLabel: TLabel;
@@ -128,16 +128,16 @@ type
     FLevel: Integer;
     FLinesCleared: Integer;
 
-    // --- Neue Variablen für die Animation ---
-    FAnimationTimer: Single; // Timer für die Animationsdauer
-    FIsAnimating: Boolean; // Statusvariable, die anzeigt, ob eine Animation läuft
-    FAnimatedCubes: TArray<TGorillaMeshInstance>; // Array für die zu animierenden Würfel
-    FAnimatedVelocities: TArray<TVector3D>; // Array für die Startgeschwindigkeiten
-    FAnimatedBasePos: TArray<TPoint3D>; // Ursprungspositionen für Vibration
-    FAnimatedVibrateDirs: TArray<TVector3D>; // Richtungen der Vibration pro Würfel
-    FAnimatedPhases: TArray<Single>; // Phasen für die Sinus-Vibration
-    FExplosionTriggered: Boolean; // interne Flag, ob die Explosion ausgelöst wurde
-    FRemovedLines: TArray<Integer>; // Speichert die Y-Koordinaten der zu löschenden Zeilen
+    // --- Variables for animations
+    FAnimationTimer: Single; // Timer for the animation duration
+    FIsAnimating: Boolean; // State indicating if the animation is running
+    FAnimatedCubes: TArray<TGorillaMeshInstance>; // Array of animating cube instance
+    FAnimatedVelocities: TArray<TVector3D>; // Array for starting speed
+    FAnimatedBasePos: TArray<TPoint3D>; // Origin position for vibration
+    FAnimatedVibrateDirs: TArray<TVector3D>; // Vibration direction per cube
+    FAnimatedPhases: TArray<Single>; // Sinus-Vibration phases
+    FExplosionTriggered: Boolean; // State indicating if the explosion was started
+    FRemovedLines: TArray<Integer>; // Stores y-coordinates for deletable lines
 
     // Next-piece preview
     FNextPieces: array[0..1] of TCellKind;
@@ -145,18 +145,18 @@ type
 
     // Bag7 Randomizer
     FBag: array[0..6] of TCellKind;
-    FBagIndex: Integer; // Index auf das nächste Element in der Bag (0..6)
+    FBagIndex: Integer; // Index on the next element in bag (0..6)
 
   {$IFDEF AUDIO}
     // Music and effects
     FAudioPlayer : TGorillaFMODAudioManager;
   {$ENDIF}
 
-    // --- Shake-Animation für HardDrop ---
+    // --- Shake-Animation for HardDrop ---
     FIsShaking: Boolean;
     FShakeTimer: Single;
     FShakeDuration: Single;
-    FShakeOscillations: Integer; // wie oft schwingt es hin und her
+    FShakeOscillations: Integer; // Number of swingings
     FShakingCubes: TArray<TGorillaMeshInstance>;
     FShakeOrigPos: TArray<TVector3D>;
     FShakeAmplitudes: TArray<TVector3D>;
@@ -168,15 +168,17 @@ type
     FCameraShakeAmplitude: TVector3D;
     FCameraShakeBaseFreq: TVector3D;
 
-    // --- Drop-Animation nach Line Clear ---
+    // --- Drop-Animation after a line was cleared ---
     FIsDropping: Boolean;
     FDropTimer: Single;
     FDropDuration: Single;
     FDroppingCubes: TArray<TGorillaMeshInstance>;
-    FDropStartPos: TArray<TVector3D>;
-    FDropEndPos: TArray<TVector3D>;
-    FDropDelay: TArray<Single>; // individuelle Verzögerung pro Würfel
+    FDropStartPos: TArray<TVector3D>; // Dropping start position per cube
+    FDropEndPos: TArray<TVector3D>; // Dropping end position per cube
+    FDropDelay: TArray<Single>; // Dropping delay per cube
 
+    // --- A global text to store the more complex electric shader effect, when
+    // a line gets removed ---
     FElectricShader : TStringList;
 
     procedure ShuffleBag;
@@ -202,7 +204,7 @@ type
 
     procedure DoOnTick(Sender: TObject);
 
-    procedure HandleGameOver; // zentrale, thread-sichere GameOver-Routine
+    procedure HandleGameOver;
     procedure Clear();
 
   protected
@@ -220,10 +222,10 @@ implementation
 
 {$R *.fmx}
 
-// Array zur Speicherung der Fallgeschwindigkeiten
+// Falling speeds for each level
 const PieceDropDelays: array[0..20] of Single =
-  (0.8, 0.717, 0.63, 0.55, 0.47, 0.39, 0.31, 0.23, 0.15, 0.1, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.02, 0.02, 0.02, 0.02);
-  // (Werte aus original Tetris, für die Level 0-20)
+  (0.8, 0.717, 0.63, 0.55, 0.47, 0.39, 0.31, 0.23, 0.20, 0.16, 0.14, 0.12, 0.10,
+   0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02);
 
 const
   ActivePieceEmission = $55000000;
@@ -233,10 +235,10 @@ const
      $448ecae6, // Cyan
      $44ffee32, // Gelb
      $44c86bfa, // Lila
-     $4490be6d, // Grün
+     $4490be6d, // GrÃ¼n
      $44f94144, // Rot
      $44abc4ff, // Blau
-     $44f8961e // Orange
+     $44f8961e  // Orange
      );
 
 const
@@ -361,7 +363,7 @@ begin
   OldRot := P.Rot;
   NewRot := (OldRot + Dir + 4) mod 4;
 
-  // Matrix drehen
+  // Rotate matrix
   for y := 0 to 3 do
     for x := 0 to 3 do
       if Dir=1 then // rechts
@@ -369,13 +371,13 @@ begin
       else           // links
         NewMat[3-x,y] := P.Matrix[y,x];
 
-  // Kick-Tabelle auswählen
+  // Select kick table
   if P.Kind = ckI then
     Kicks := I_Kicks[P.Rot, NewRot]
   else
     Kicks := JLSTZ_Kicks[P.Rot, NewRot];
 
-  // Kick-Offsets testen
+  // Test kick offsets
   for var k in Kicks do
   begin
     if not Collides(NewMat, P.X+k.X, P.Y+k.Y, Board) then
@@ -401,6 +403,7 @@ begin
         if (Y+j>=0) and (Board[Y+j,X+i]<>ckNone) then
           Exit(True);
       end;
+
   Result := False;
 end;
 
@@ -408,7 +411,7 @@ function TForm1.TryMove(dx, dy: Integer): Boolean;
 begin
   dx := dx * FMoveIntensity;
 
-  // Prüfe Kollision am Ziel
+  // Check collision a the end
   Result := not Collides(FCurrentPiece.Matrix, FCurrentPiece.X + dx, FCurrentPiece.Y + dy, FBoard);
   if Result then
   begin
@@ -418,11 +421,11 @@ begin
   end
   else
   begin
-    // Wenn die Bewegung fehlschlägt UND es sich um eine Bewegung nach unten handelt,
-    // UND die Y-Koordinate noch in der "Startzone" ist (über dem Spielfeld)
+    // If movement fails and it's a movement downwards, and the y-coordinate is
+    // still in starting zone (above the gaming area)
     if (dy > 0) and (FCurrentPiece.Y < 0) then
     begin
-      // Aktive Würfel verstecken
+      // Hide active cubes
       for var i := 0 to 3 do
         if Assigned(FActiveCubes[i]) then
         begin
@@ -430,9 +433,9 @@ begin
           FActiveCubes[i] := nil;
         end;
 
-      // Thread-sichere GameOver-Handling
       HandleGameOver;
-      // wichtig: kein weiteres Fortfahren aus dieser Bewegung
+
+      // Important: no more movement here
       Exit;
     end;
   end;
@@ -461,32 +464,31 @@ begin
   LSoundItem.Play();
 {$ENDIF}
 
-  // Spielzustand initialisieren
+  // Initialize stats
   FScore := 0;
   FLevel := 0;
   FLinesCleared := 0;
 
-  FPieceDropDelay := 0.9; // langsamer Start
+  FPieceDropDelay := 0.9;
   FPieceDropTimer := 0;
 
-  // Initialisiere die DAS/ARR-Werte
-  FMoveDelay := 0.2; // 200 ms Verzögerung
-  FMoveRate := 0.05; // 50 ms zwischen Wiederholungen
+  // Initialize DAS/ARR values
+  FMoveDelay := 0.2; // 200 ms delay
+  FMoveRate := 0.05; // 50 ms between repetition
   FMoveTimer := 0;
   FMoveIntensity := 1;
   FIsInitialMove := False;
-  FGameOver := False; // << Spielstart: Nicht Game Over
+  FGameOver := False; // Reset on start
 
   FIsShaking := False;
   FShakeTimer := 0;
   FShakeDuration := 0.5;
   FShakeOscillations := 4;
 
-  // Camera-Shake default einschalten (kann später ausgeschaltet werden)
   FCameraShakeEnabled := True;
-  // Standard-Amplitude: etwas kleiner als Würfel-Amplitude, kann angepasst werden
+  // Standard amplitude: a bit smaller than the cube amplitude: can be adjusted, if you like
   FCameraShakeAmplitude := Vector3D(0.25, 0.25, 0.0); // X,Y,Z in scene units
-  FCameraShakeBaseFreq := Vector3D(1.0, 1.2, 0.9);    // Basisfrequenzen (multipliziert mit Oscillations)
+  FCameraShakeBaseFreq := Vector3D(1.0, 1.2, 0.9);    // Basis frequencies (multiplied with oscillations)
 
   // create viewport at runtime and fill the form
   FGorilla := TGorillaViewport.Create(Self);
@@ -494,6 +496,7 @@ begin
   FGorilla.Align := TAlignLayout.Contents;
   FGorilla.UsingDesignCamera := False;
   FGorilla.EmissiveBlur := 3;
+  FGorilla.FrustumCulling := false;
 
   FGorilla.Touch.GestureManager := GestureManager1;
   FGorilla.Touch.StandardGestures := [TStandardGesture.sgLeft,
@@ -502,7 +505,7 @@ begin
   FGorilla.OnGesture := ViewportGesture;
   FGorilla.OnTap := ViewportTap;
 
-  // manual rendering via GorillaTimer (fixed ~60 fps)
+  // Manual movement via GorillaTimer (fixed ~60 fps)
   FTimer := TGorillaTimer.Create;
   FTimer.Interval := 16; // ~60 FPS
   FTimer.OnTimer := DoOnTick;
@@ -519,17 +522,17 @@ begin
   CreateGorillaScene;
   InitBoard;
 
-  // Bag7 initialisieren
+  // Initialize Bag7
   RefillBag;
 
-  // Next-Pieces initialisieren aus Bag
+  // Initialize next pieces from bag
   FNextPieces[0] := DrawFromBag;
   FNextPieces[1] := DrawFromBag;
   UpdatePreview;
 
   SpawnPiece;
 
-  UpdateStats; // Neue Prozedur zum Aktualisieren der Labels
+  UpdateStats;
   FPieceDropDelay := PieceDropDelays[FLevel];
 end;
 
@@ -559,56 +562,67 @@ begin
   FGorilla.Camera := FCamera;   // << link camera to viewport
   FGorilla.UsingDesignCamera := false;
 
-  // Merke die Originalposition der Kamera für Shake-Restore
+  // Save the original position of the camera for shaking-restore
   FCameraOrigPos := FCamera.Position.Point;
 
   FLight := TGorillaLight.Create(FCamera);
   FLight.Parent := FCamera;
   FLight.LightType := TLightType.Point;
 
-  var LSkyBox := TGorillaSkyBox.Create(FGorilla);
-  LSkyBox.Parent := FGorilla;
-
-{$IFDEF SKYBOX}
-  LSkyBox.Size := Point3D(50, 50, 50);
-  LSkyBox.Mode := TGorillaSkyBoxMode.CubeMapSkyBox;
-  LSkyBox.FrontSide.LoadFromFile(FAssetsPath + 'SkyBox.png');
-{$ELSE}
-  LSkyBox.Mode := TGorillaSkyBoxMode.Blank;
-  LSkyBox.Diffuse := TAlphaColorRec.Black;
-{$ENDIF}
-
-{$IFnDEF SKYBOX}
-  // There is a bug on loading cubemaps on Android: Until the bug is fixed, we
-  // setup a plane as background instead.
+  // Instead of loading the texture directly into a skybox we use 4 planes
+  // we recognized issues on Android with the cubemap skybox
+  // Also is unnecessary to render the top and bottom.
+  // Anstatt einer Skybox erzeugen wir nur die notwendigen 4 Seiten
   var LPlane := TGorillaPlane.Create(FGorilla);
   LPlane.Parent := FGorilla;
-  LPlane.SetSize(50, 50, 1);
-  LPlane.Position.Point := Point3D(0, 0, -25);
+  LPlane.SetSize(200, 200, 1);
+  LPlane.Position.Point := Point3D(0, 0, -100);
 
   var LPlaneMat := TGorillaDefaultMaterialSource.Create(LPlane);
   LPlaneMat.Parent := LPlane;
   LPlaneMat.UseTexture0 := true;
+{$IFDEF ANDROID}
+  // On Android we're using a lower resolution of the skybox image
   LPlaneMat.Texture.LoadFromFile(FAssetsPath + 'Skybox.jpg');
-  LPlane.MaterialSource := LPlaneMat;
+{$ELSE}
+  LPlaneMat.Texture.LoadFromFile(FAssetsPath + 'Skybox.png');
 {$ENDIF}
+  LPlane.MaterialSource := LPlaneMat;
 
+  var LPlaneItm := LPlane.AddInstanceItem('RightPlane');
+  LPlaneItm.Position.Point := Point3D(100, 0, 0);
+  LPlaneItm.Scale.Point := Point3D(200, 200, 1);
+  LPlaneItm.RotationAngle.Y := -90;
+
+  LPlaneItm := LPlane.AddInstanceItem('FrontPlane');
+  LPlaneItm.Position.Point := Point3D(0, 0, 100);
+  LPlaneItm.Scale.Point := Point3D(200, 200, 1);
+  LPlaneItm.RotationAngle.Y := 180;
+
+  LPlaneItm := LPlane.AddInstanceItem('LeftPlane');
+  LPlaneItm.Position.Point := Point3D(-100, 0, 0);
+  LPlaneItm.Scale.Point := Point3D(200, 200, 1);
+  LPlaneItm.RotationAngle.Y := 270;
+
+  // Create a floor which we can animate
   var LFloor := TGorillaPlane.Create(FGorilla);
   LFloor.Parent := FGorilla;
   LFloor.RotationAngle.X := 90;
-  LFloor.SetSize(50, 50, 1);
-  LFloor.Position.Point := Point3D(10, 22.5, 10);
+  LFloor.SetSize(200, 200, 1);
+  LFloor.Position.Point := Point3D(0, 22.5, 0);
 {$IFDEF ANDROID}
   // Not sure, why a default material is needed on Android
   var LFloorMat := TGorillaDefaultMaterialSource.Create(LFloor);
 {$ELSE}
-  // Ein Untergrund mit bewegender Textur, die stets durchläuft
+  // Create a simple lambert texture material with a expanded shader.
   var LFloorMat := TGorillaLambertMaterialSource.Create(LFloor);
 {$ENDIF}
   LFloorMat.Parent := LFloor;
   LFloorMat.UseTexture0 := true;
   LFloorMat.Texture.LoadFromFile(FAssetsPath + 'Floor.jpg');
 
+  // Write a small shader to animate the floor texture.
+  // We need to activate time-measurement, otherwise "_TimeInfo" will not be set
   LFloorMat.MeasureTime := true;
   var LStr := TStringList.Create();
   try
@@ -712,13 +726,13 @@ begin
   // --- Visual borders / background for board size ---
   borderMat := TGorillaLambertMaterialSource.Create(FGorilla);
   borderMat.Parent := FGorilla;
-  borderMat.Diffuse := $ff094e86; // dunkel halbtransparent
+  borderMat.Diffuse := $ff094e86;
   borderMat.Emissive := $00000000;
   borderMat.UseTexture0 := false;
 
   backMat := TGorillaLambertMaterialSource.Create(FGorilla);
   backMat.Parent := FGorilla;
-  backMat.Diffuse := $ff094e86; // halbtransparent bläulich
+  backMat.Diffuse := $ff094e86;
   backMat.Emissive := $00000000;
   backMat.UseTexture0 := false;
 
@@ -752,7 +766,7 @@ begin
   backPlane.SetHitTestValue(false);
   backPlane.Visible := True;
 
-  // Templates für Instancing erzeugen
+  // Creating templates for our cubes
   for var ck := Low(TCellKind) to High(TCellKind) do
   begin
     FTemplates[ck] := TGorillaCube.Create(FGorilla);
@@ -760,6 +774,7 @@ begin
     FTemplates[ck].SetSize(0.98, 0.98, 0.98);
     FTemplates[ck].Visible := true;
     FTemplates[ck].SetHitTestValue(false);
+    FTemplates[ck].Position.Y := -100;
 
     if ck = ckNone then
       FTemplates[ck].SetOpacityValue(0);
@@ -783,6 +798,7 @@ begin
     FTemplatesElectric[ck].SetSize(0.98, 0.98, 0.98);
     FTemplatesElectric[ck].Visible := true;
     FTemplatesElectric[ck].SetHitTestValue(false);
+    FTemplatesElectric[ck].Position.Y := -100;
 
     if ck = ckNone then
       FTemplatesElectric[ck].SetOpacityValue(0);
@@ -802,13 +818,14 @@ begin
     FTemplatesElectric[ck].MaterialSource := mat;
   end;
 
-  // Ghost template erzeugen
+  // Create ghost cube template
   FGhostTemplate := TGorillaCube.Create(FGorilla);
   FGhostTemplate.Parent := FGorilla;
   FGhostTemplate.SetSize(0.98,0.98,0.98);
   FGhostTemplate.Visible := true;
   FGhostTemplate.SetOpacityValue(0.5);
   FGhostTemplate.SetHitTestValue(false);
+  FGhostTemplate.Position.Y := -100;
 
   var mat := TGorillaBlinnMaterialSource.Create(FGorilla);
   mat.Parent := FGorilla;
@@ -818,18 +835,18 @@ begin
 
   FGhostTemplate.MaterialSource := mat;
 
-  // --- Preview für die nächsten 2 Stücke ---
-  // Positioniert die Vorschau rechts außerhalb des Boards
+  // --- Create preview cubes for the next 2 pieces ---
   for i := 0 to 1 do
   begin
     for var j := 0 to 3 do
     begin
+      // Placed on the left side and much smaller
       FPreviewCubes[i,j] := TGorillaCube.Create(FGorilla);
       FPreviewCubes[i,j].Parent := FGorilla;
-      FPreviewCubes[i,j].SetSize(0.5, 0.5, 0.5); // etwas kleiner als Spielwürfel
+      FPreviewCubes[i,j].SetSize(0.5, 0.5, 0.5);
       FPreviewCubes[i,j].Visible := False;
 
-      // eigenes Material so dass die Vorschau dezenter ist
+      // Create a different material for a different look
       var pMat := TGorillaDefaultMaterialSource.Create(FGorilla);
       pMat.Parent := FGorilla;
       pMat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
@@ -855,12 +872,11 @@ end;
 
 procedure TForm1.DoOnTick(Sender: TObject);
 const DT = 1/60;
-// Animation der explodierenden Würfel / Vibration -> Explosion
 const
-  VIBRATE_TIME = 0.4; // Sekunden Vibration bevor Explosion
-  VIBRATE_AMPLITUDE = 0.15; // maximale Verschiebung in Einheiten (relativ)
-  VIBRATE_FREQ = 50.0; // Frequenz der Vibration (Hz)
-  EXPLOSION_DURATION = 0.65; // Gesamtdauer nach Explosion (wird weiter unten verwendet)
+  VIBRATE_TIME = 0.4; // Seconds of vibration before the explosion
+  VIBRATE_AMPLITUDE = 0.15; // maximum displacement of vibration
+  VIBRATE_FREQ = 50.0; // vibration frequency (Hz)
+  EXPLOSION_DURATION = 0.65; // Total duration of vibration and explosion
 var
   vibrOff: TPoint3D;
   phase: Single;
@@ -872,11 +888,12 @@ var
 begin
   if FDestroying then
     Exit;
-  // Wenn GameOver gesetzt ist, keine Spiel-Logik mehr (aber noch Animation beenden lassen)
+
+  // if GameOver is set, no more game logic, but finish the animation
   if FGameOver and not FIsAnimating then
     Exit;
 
-  // Wenn eine Animation läuft, nur diese verarbeiten
+  // If animation is running, only handle this one and exit
   if FIsAnimating then
   begin
   {$IFDEF AUDIO}
@@ -892,16 +909,16 @@ begin
     FAnimationTimer := FAnimationTimer + DT;
     amplitude := VIBRATE_AMPLITUDE * abs(sin(FAnimationTimer) * 2);
 
-    // Animation der explodierenden Würfel / Vibration -> Explosion
+    // Animation of exploding cubes, starting with vibration and ending in an explosion
     for i := 0 to High(FAnimatedCubes) do
     begin
       if Assigned(FAnimatedCubes[i]) then
       begin
-        // Wenn wir noch in der Vibrationsphase sind, wackeln die Würfel an Ort und Stelle
+        // If we're in a vibration phase, cube shaking in place.
         if FAnimationTimer < VIBRATE_TIME then
         begin
           phase := FAnimatedPhases[i];
-          // Sinusbasierte Vibration entlang einer kleinen zufälligen Richtung
+          // sinus based vibration along a tiny random direction
           vibrOff := Point3D(
             FAnimatedVibrateDirs[i].X * Sin((FAnimationTimer * VIBRATE_FREQ) + phase) * amplitude,
             FAnimatedVibrateDirs[i].Y * Sin((FAnimationTimer * VIBRATE_FREQ) + phase) * amplitude,
@@ -913,22 +930,20 @@ begin
             FAnimatedBasePos[i].Z + vibrOff.Z
           );
 
-          // leichte pulsierende Emissive / Scale kann hinzugefügt werden, falls gewünscht
           Continue;
         end;
 
-        // Sobald die Vibrationsphase vorbei ist, löse einmalig die Explosion aus
+        // Since vibration phase is done, run the explosion once.
         if (not FExplosionTriggered) then
         begin
-          // Erzeuge für jeden animierten Würfel eine zufällige Explosionsgeschwindigkeit
+          // Create a random explosion speed for each animated cube
           for var j := 0 to High(FAnimatedVelocities) do
           begin
-            // Nur für vorhandene Würfel setzen
             if Assigned(FAnimatedCubes[j]) then
             begin
               FAnimatedVelocities[j] := Vector3D(
                 (RandomRange(-400, 400) / 100) * (1 + RandomRange(0,200)/100), // X
-                (RandomRange(-100, 300) / 100) * (1 + RandomRange(0,200)/100), // Y - leicht nach oben bevorzugt
+                (RandomRange(-100, 300) / 100) * (1 + RandomRange(0,200)/100), // Y
                 (RandomRange(-400, 400) / 100) * (1 + RandomRange(0,200)/100)  // Z
               );
             end;
@@ -936,35 +951,27 @@ begin
           FExplosionTriggered := True;
 
         {$IFDEF AUDIO}
+          // Add your individual explosion sound here besides the row-clear sound.
 //          var LItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'explode.wav');
 //          if Assigned(LItem) then LItem.Play;
         {$ENDIF}
         end;
 
-        // Normale Bewegungsintegration nach Explosion
+        // Regular movement after explosion
         pos := FAnimatedCubes[i].Position.Point;
         pos.X := pos.X + FAnimatedVelocities[i].X * DT * 5;
         pos.Y := pos.Y + FAnimatedVelocities[i].Y * DT * 5;
         pos.Z := pos.Z + FAnimatedVelocities[i].Z * DT * 5;
         FAnimatedCubes[i].Position.Point := pos;
-
-        (*
-        // Skalierung verringern, um das Verschwinden zu simulieren
-        FAnimatedCubes[i].SetSize(Max(0.01, FAnimatedCubes[i].Scale.X - DT * 1.5),
-                                 Max(0.01, FAnimatedCubes[i].Scale.Y - DT * 1.5),
-                                 Max(0.01, FAnimatedCubes[i].Scale.Z - DT * 1.5));
-        // Würfel langsam transparenter machen
-        FAnimatedCubes[i].SetOpacityValue(Max(0, FAnimatedCubes[i].Opacity - DT * 2));
-        *)
       end;
     end;
 
-    // Animation beenden und Spielfeld aktualisieren, wenn der Timer abläuft
+    // Finish the animation and update gaming area, when the timer expired.
     if FAnimationTimer >= EXPLOSION_DURATION then
     begin
       FIsAnimating := False;
 
-      // 1) Freigeben der animierten Würfel
+      // Free the cube instances after they exploded
       for i := 0 to High(FAnimatedCubes) do
       begin
         if Assigned(FAnimatedCubes[i]) then
@@ -979,10 +986,10 @@ begin
       StartDropAnimation;
     end;
 
-    Exit; // Timer-Prozedur verlassen, um Gravitation zu überspringen
+    Exit;
   end;
 
-  // --- Shake-Animation verarbeiten (HardDrop) ---
+  // --- Shake-Animation (HardDrop) ---
   if FIsShaking then
   begin
   {$IFDEF AUDIO}
@@ -999,12 +1006,13 @@ begin
     var t := FShakeTimer / FShakeDuration;
     if t > 1 then t := 1;
 
-    // Dämpfungsfaktor: sanftes Abklingen (benutze quadratische Dämpfung für weicheres Ende)
-    var damp := (1 - t) * (1 - t); // quadratisch -> langsameres Ausklingen
+    //
+    // Damping factor: smooth decay (use quadratic damping for softer end)
+    var damp := (1 - t) * (1 - t); // square -> slower decay
 
-    // Für mehrere Hin-/Her-Schwingungen verwenden wir:
+    // For multiple back-and-forth oscillations, we use:
     // angle = 2*pi * Oscillations * t * baseFreqMultiplier
-    // wobei baseFreq pro-Würfel variiert (FShakeBaseFreqs)
+    // where baseFreq varies per cube (FShakeBaseFreqs)
     for i := 0 to High(FShakingCubes) do
     begin
       if Assigned(FShakingCubes[i]) then
@@ -1013,13 +1021,13 @@ begin
         var amp := FShakeAmplitudes[i];
         var bf := FShakeBaseFreqs[i];
 
-        // Berechne Winkelfortschritt: 2*pi * Osc * (t) * baseFreq
-        // t ist 0..1 über die ganze Dauer -> so entstehen exakt FShakeOscillations Zyklen
+        // Calculate angular progression: 2*pi * Osc * (t) * baseFreq
+        // t is 0..1 over the entire duration -> this creates exactly FShakeOscillations cycles
         var angleX := 2 * Pi * (FShakeOscillations * t) * bf.X;
         var angleY := 2 * Pi * (FShakeOscillations * t) * bf.Y;
         var angleZ := 2 * Pi * (FShakeOscillations * t) * bf.Z;
 
-        // Sinus-basiertes Hin/Her, mit Dämpfung multipliziert
+        // Sine-based back/forth, multiplied by damping
         var ox := Sin(angleX) * amp.X * damp;
         var oy := Sin(angleY) * amp.Y * damp;
         var oz := Sin(angleZ) * amp.Z * damp;
@@ -1028,27 +1036,27 @@ begin
       end;
     end;
 
-    // --- Kamera synchron zum Block-Shake bewegen ---
+    // --- Move camera synchronously to Block-Shake ---
     if FCameraShakeEnabled and Assigned(FCamera) then
     begin
-      // Wir verwenden denselben t (0..1) und damp-Faktor wie bei den Würfeln
+      // We use the same t (0..1) and damp factor as for the cubes
       // angle = 2*pi * Oscillations * t * baseFreq
       var camAngleX := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.X;
       var camAngleY := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.Y;
       var camAngleZ := 2 * Pi * (FShakeOscillations * t) * FCameraShakeBaseFreq.Z;
 
-      // Sinus-basiertes Offset
+      // Sinus based offset
       var camOx := Sin(camAngleX) * FCameraShakeAmplitude.X * damp;
       var camOy := Sin(camAngleY) * FCameraShakeAmplitude.Y * damp;
       var camOz := Sin(camAngleZ) * FCameraShakeAmplitude.Z * damp;
 
-      // Setze die Kamera-Position relativ zur Originalposition
+      // Set the camera position relative to the original position
       FCamera.Position.Point := Point3D(FCameraOrigPos.X + camOx,
                                         FCameraOrigPos.Y + camOy,
                                         FCameraOrigPos.Z + camOz);
     end;
 
-    // Ende der Animation: Positionen wiederherstellen und Lines löschen/weiter
+    // End of animation: Restore positions and delete lines/continue
     if FShakeTimer >= FShakeDuration then
     begin
       for i := 0 to High(FShakingCubes) do
@@ -1060,7 +1068,7 @@ begin
         end;
       end;
 
-      // Aufräumen der Shake-Arrays
+      // Cleaning up the shake arrays
       SetLength(FShakingCubes, 0);
       SetLength(FShakeOrigPos, 0);
       SetLength(FShakeAmplitudes, 0);
@@ -1068,7 +1076,7 @@ begin
       FIsShaking := False;
       FShakeTimer := 0;
 
-      // Jetzt Lines prüfen / löschen (das war im LockPiece ursprünglich geplant)
+      // Now check / delete lines (this was originally planned in the LockPiece)
       ClearLines;
 
       // Restore camera exact
@@ -1078,10 +1086,10 @@ begin
       end;
     end;
 
-    Exit; // Während Shake keine andere Spiel-Logik ausführen
+    Exit; // While shake no more game logic
   end;
 
-  // --- Drop-Animation nach Line Clear ---
+  // --- Drop-Animation after line clear ---
   if FIsDropping then
   begin
     FDropTimer := FDropTimer + DT;
@@ -1098,7 +1106,7 @@ begin
       if localT < 0 then
       begin
         allDone := False;
-        Continue; // Würfel wartet noch
+        Continue; // cube is still waiting
       end;
 
       if localT >= 1 then
@@ -1121,7 +1129,7 @@ begin
 
     if allDone then
     begin
-      // Aufräumen
+      // Cleanup
       for i := 0 to High(FDroppingCubes) do
         if Assigned(FDroppingCubes[i]) then
           FDroppingCubes[i].Position.Point := FDropEndPos[i];
@@ -1133,17 +1141,17 @@ begin
 
       FIsDropping := False;
 
-      // 3) Aktualisieren + neues Stück (sofern nicht GameOver)
+      // Update + add new piece, since not game over
       RedrawBoard;
       UpdateStats;
       if not FGameOver then
         SpawnPiece;
     end;
 
-    Exit; // während Drop keine normalen Gravitation/Inputs
+    Exit; // While dropping no more gravitation or inputs
   end;
 
-  // --- Gravitations-Logik und DAS/ARR wie zuvor ---
+  // --- Gravitation logic and DAS/ARR ---
   if FDownHeld or FHardDrop then
   begin
     if not TryMove(0,1) then
@@ -1255,19 +1263,19 @@ end;
 procedure TForm1.ViewportGesture(Sender: TObject;
   const EventInfo: TGestureEventInfo; var Handled: Boolean);
 begin
-  if FGameOver then // Beispiel: Neustart mit Enter
+  if FGameOver then
   begin
-    // Neustart-Flow: Spielfeld leeren, Status zurücksetzen, Timer ggf neu starten
+    // Restart flow: Clear the playing field, reset the status, restart the timer if necessary
     FGameOver := False;
     FScore := 0;
     FLevel := 0;
     FLinesCleared := 0;
     FPieceDropDelay := PieceDropDelays[0];
-    FillChar(FBoard, SizeOf(FBoard), 0); // Spielfeld leeren
+    FillChar(FBoard, SizeOf(FBoard), 0); // Clear gaming board
     RedrawBoard;
     UpdateStats;
 
-    // Falls Timer gestoppt wurde, neu erstellen / starten
+    // If timer has been stopped, recreate / start
     if Assigned(FTimer) and not FTimer.Started then
     begin
       FTimer := TGorillaTimer.Create;
@@ -1355,7 +1363,7 @@ begin
     begin
       if FBoard[y, x] <> ckNone then
       begin
-        // Falls der Würfeltyp sich geändert hat
+        // If the type of the cube has changed
         if Assigned(FCubes[y, x])
         and (FCubes[y, x].OwnerMesh <> FTemplates[FBoard[y, x]]) then
         begin
@@ -1365,7 +1373,7 @@ begin
 
         if not Assigned(FCubes[y, x]) then
         begin
-          // Falls ein Würfel fehlt (z.B. nach dem Verschieben), erstelle ihn neu
+          // If a cube is missing (e.g. after moving), create it again
           FCubes[y, x] := FTemplates[FBoard[y, x]].AddInstanceItem(Format('%d_%d', [X, Y]));
         end;
 
@@ -1378,7 +1386,7 @@ begin
         begin
           if (FCubes[y, x].OwnerMesh <> FTemplates[FBoard[y, x]]) then
           begin
-            // Vorherige Instanz löschen
+            // Delete the previous cube instance
             FCubes[y, x].OwnerMesh.DeleteInstance(FCubes[y, x].Index);
             FCubes[y, x] := nil;
           end;
@@ -1386,7 +1394,7 @@ begin
 
         if not Assigned(FCubes[y, x]) then
         begin
-          // Neue NONE Instanz erstellen
+          // Add a new instance for this cube
           FCubes[y, x] := FTemplates[ckNone].AddInstanceItem(Format('%d_%d', [X, Y]));
         end;
 
@@ -1403,16 +1411,16 @@ begin
   FHardDrop := false;
   FHardDropExtraPoints := false;
 
-  // Nimm das nächste Piece aus der Vorschau (die Vorschau wurde aus der Bag gefüllt)
+  // Take the next piece from the preview (the preview was filled from the bag)
   FCurrentPiece.Kind := FNextPieces[0];
 
-  // Schiebe die Queue: 1 -> 0, neue aus Bag in Slot 1
+  // Push the queue: 1 -> 0, new from bag into slot 1
   FNextPieces[0] := FNextPieces[1];
   FNextPieces[1] := DrawFromBag;
 
   UpdatePreview;
 
-  // restliche Initialisierung...
+  // Piece initialization
   FCurrentPiece.Matrix := PieceShapes[FCurrentPiece.Kind];
   FCurrentPiece.Rot := 0;
   FCurrentPiece.X := (COLS div 2) - 2;
@@ -1429,19 +1437,19 @@ end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
 begin
-  if FGameOver and (Key = vkReturn) then // Beispiel: Neustart mit Enter
+  if FGameOver and (Key = vkReturn) then
   begin
-    // Neustart-Flow: Spielfeld leeren, Status zurücksetzen, Timer ggf neu starten
+    // Restart flow: Clear the playing field, reset the status, restart the timer if necessary
     FGameOver := False;
     FScore := 0;
     FLevel := 0;
     FLinesCleared := 0;
     FPieceDropDelay := PieceDropDelays[0];
-    FillChar(FBoard, SizeOf(FBoard), 0); // Spielfeld leeren
+    FillChar(FBoard, SizeOf(FBoard), 0);
     RedrawBoard;
     UpdateStats;
 
-    // Falls Timer gestoppt wurde, neu erstellen / starten
+    // If timer has been stopped, recreate / start
     if Assigned(FTimer) and not FTimer.Started then
     begin
       FTimer := TGorillaTimer.Create;
@@ -1558,7 +1566,8 @@ var cells: TArray<TPoint>;
     i: Integer;
     WasHardDrop: Boolean;
 begin
-  WasHardDrop := FHardDrop; // merken, ob der Lock durch HardDrop initiiert wurde
+  // Note whether the lock was initiated by HardDrop
+  WasHardDrop := FHardDrop;
   FHardDrop := False;
 
   cells := CellsOf(FCurrentPiece.Matrix);
@@ -1583,17 +1592,17 @@ begin
       FGhostCubes[i] := nil;
     end;
 
-  // Board neu zeichnen (damit FCubes existieren / sichtbar sind)
+  // Redraw board (so that FCubes exist / are visible)
   RedrawBoard;
 
-  // Wenn es ein HardDrop war => Shake-Animation starten und ClearLines nach Ende der Animation ausführen.
+  // If it was a hard drop => start the shake animation and execute ClearLines after the animation ends.
   if WasHardDrop then
   begin
     StartShakeBoard;
   end
   else
   begin
-    // normales Verhalten: sofort Linien prüfen / löschen
+    // Normal behavior: check / delete lines immediately
     ClearLines;
   end;
 end;
@@ -1627,7 +1636,7 @@ var
 begin
   SetLength(linesToClear, 0);
 
-  // Schritt 1: Finde alle vollen Reihen und speichere sie
+  // Step 1: Find all full rows and save them
   for y := ROWS - 1 downto 0 do
   begin
     full := True;
@@ -1648,7 +1657,7 @@ begin
 
   if Length(linesToClear) > 0 then
   begin
-    // Schritt 2: Punkte vergeben und Level erhöhen
+    // Step 2: Award points and increase levels
     var LScore := 0;
     case Length(linesToClear) of
       1: begin
@@ -1683,13 +1692,13 @@ begin
         FPieceDropDelay := PieceDropDelays[FLevel];
     end;
 
-    // Speichere die zu löschenden Zeilen und starte Animation
+    // Save the lines to be deleted and start animation
     FRemovedLines := Copy(linesToClear);
     StartLineClearAnimation(linesToClear);
   end
   else
   begin
-    // Wenn keine Zeilen gelöscht wurden, sofort das nächste Teil spawnen
+    // If no lines have been deleted, immediately spawn the next part
     if not FGameOver then
       SpawnPiece;
   end;
@@ -1703,16 +1712,16 @@ var cells: TArray<TPoint>;
     p: TPoint;
     GhostPiece: TPiece;
 begin
-  // Kopiere den aktuellen Block
+  // Copy the current block
   GhostPiece := FCurrentPiece;
 
-  // Finde die niedrigste Position, an der der Block landen kann
+  // Find the lowest position where the block can land
   while not Collides(GhostPiece.Matrix, GhostPiece.X, GhostPiece.Y + 1, FBoard) do
     Inc(GhostPiece.Y);
 
   cells := CellsOf(GhostPiece.Matrix);
 
-  // Aktualisiere die Position und Sichtbarkeit der Ghost-Cubes
+  // Update the position and visibility of the ghost cubes
   for i := 0 to 3 do
   begin
     p := cells[i];
@@ -1737,7 +1746,7 @@ begin
   FAnimationTimer := 0;
   FExplosionTriggered := False;
 
-  // Blöcke aus den zu löschenden Reihen in das Animations-Array verschieben
+  // Move blocks from the rows to be deleted into the animation array
   SetLength(FAnimatedCubes, Length(Lines) * COLS);
   SetLength(FAnimatedVelocities, Length(Lines) * COLS);
   SetLength(FAnimatedBasePos, Length(Lines) * COLS);
@@ -1752,35 +1761,36 @@ begin
       cube := FCubes[y, x];
       if Assigned(cube) and (cube.OwnerMesh <> FTemplates[ckNone]) then
       begin
-        // Basisposition speichern (für Vibration)
+        // Save base position (for vibration)
         FAnimatedBasePos[idx] := cube.Position.Point;
 
-        // Anfang: keine Explosionsgeschwindigkeit, nur Vibration
+        // Beginning: no explosion speed, only vibration
         FAnimatedVelocities[idx] := Vector3D(0,0,0);
 
-        // Zufällige Vibrationsrichtung und Phase
+        // Random vibration direction and phase
         var dir := Vector3D(
           RandomRange(-100, 100) / 100,
           RandomRange(-100, 100) / 100,
           RandomRange(-100, 100) / 100
         );
-        // Normieren, falls nicht null
-        var len := Sqrt(dir.X*dir.X + dir.Y*dir.Y + dir.Z*dir.Z);
+
+        // Normalize if not zero
+        var len := Sqrt(dir.X * dir.X + dir.Y * dir.Y + dir.Z * dir.Z);
         if len > 0 then
-          dir := Vector3D(dir.X/len, dir.Y/len, dir.Z/len)
+          dir := Vector3D(dir.X / len, dir.Y / len, dir.Z / len)
         else
-          dir := Vector3D(0,1,0);
+          dir := Vector3D(0, 1, 0);
         FAnimatedVibrateDirs[idx] := dir;
 
         FAnimatedPhases[idx] := RandomRange(0, 31415) / 5000; // 0..~6.283 (radians)
 
-        // Lösche Instanz und erzeuge eine neu mit dem Electric Effekt
+        // Delete instance and create a new one with the Electric effect
         var LPrevPos := cube.Position.Point;
         var bs := FBoard[y, x];
         cube.OwnerMesh.DeleteInstance(cube.Index);
         FCubes[y, x] := nil;
 
-        // Referenz in das Animationsarray übernehmen
+        // Transfer reference to the animation array
         FAnimatedCubes[idx] := FTemplatesElectric[bs].AddInstanceItem(
           Format('%d_%d', [X, Y]));
         FAnimatedCubes[idx].Position.Point := LPrevPos;
@@ -1788,7 +1798,7 @@ begin
         Inc(idx);
       end;
 
-      // Referenz im Grid entfernen – das Objekt gehört nun der Animation
+      // Remove reference in the grid â€“ the object now belongs to the animation
       FCubes[y,x] := nil;
     end;
   end;
@@ -1809,7 +1819,7 @@ begin
       if Assigned(FPreviewCubes[s,c]) then
         FPreviewCubes[s,c].Visible := False;
 
-  // Queue UI-Aufrufe in Main-Thread
+  // Queue UI-calls in main thread
   TThread.Queue(nil,
     procedure
     var i: Integer;
@@ -1822,7 +1832,7 @@ begin
           except
           end;
 
-      // Timer beenden, damit keine DoOnTick-Aufrufe mehr kommen
+      // Stop the timer so that no more DoOnTick calls come
       if Assigned(FTimer) and FTimer.Started then
         FTimer.Terminate;
 
@@ -1842,15 +1852,15 @@ var
   col: TAlphaColor;
   mat: TGorillaDefaultMaterialSource;
 begin
-  // Preview-Slots rechts neben dem Feld platzieren (außerhalb der rechten Border)
-  // Slot 0 oben, Slot 1 darunter
+  // Place preview slots to the right of the field (outside the right border)
+  // Slot 0 above, Slot 1 below
   for slot := 0 to 1 do
   begin
-    // Basis-Position für diesen Slot (anpassen wenn nötig)
-    baseX := COLS + 3 + (slot * 0); // gleiche X-Position; Y unterscheidet sich weiter unten
-    baseY := 18 + slot * 2; // Abstand zwischen Slot 0 und 1
+    // Base position for this slot (adjust if necessary)
+    baseX := COLS + 3 + (slot * 0); // same X position; Y differs further down
+    baseY := 18 + slot * 2; // Distance between slot 0 and 1
 
-    // Berechne Zell-Offsets für das Piece (verwende die PieceMatrix)
+    // Calculate cell offsets for the piece (use the PieceMatrix)
     cells := CellsOf(PieceShapes[FNextPieces[slot]]);
 
     col := PieceColors[FNextPieces[slot]];
@@ -1860,24 +1870,21 @@ begin
       if (FPreviewCubes[slot,k] = nil) then
         Continue;
 
-      // Positionierung: wir zentrieren jede 4x4-Matrix innerhalb eines kleinen Vorschau-Box
-      // Verschiebe X und Y so, dass es gut neben dem Grid steht
+      // Positioning: we center each 4x4 matrix within a small preview box
+      // Move X and Y so that it sits comfortably next to the grid
       FPreviewCubes[slot,k].Visible := True;
       FPreviewCubes[slot,k].Position.Point :=
         Point3D(baseX + (p.X * 0.5 - 1.5), baseY + (p.Y * 0.5 - 1.0), 0);
 
-      // Materialfarbe / Emissive wie beim normalen Block (etwas weniger intensiv möglich)
+      // Material color / Emissive as with the normal block (slightly less intense possible)
       mat := TGorillaDefaultMaterialSource(FPreviewCubes[slot,k].MaterialSource);
-      if Assigned(mat) then
-  //      mat.Emissive := (col and $00FFFFFF) or ($33000000) // leicht gedämpft
-      else
+      if not Assigned(mat) then
       begin
         mat := TGorillaDefaultMaterialSource.Create(FGorilla);
         mat.ShadingModel := TGorillaShadingModel.smBlinnPhong;
         mat.UseLighting := true;
         mat.UseSpecular := true;
         mat.Parent := FGorilla;
-//        mat.Emissive := (col and $00FFFFFF) or ($33000000);
         FPreviewCubes[slot,k].MaterialSource := mat;
       end;
     end;
@@ -1889,7 +1896,7 @@ var
   i, j: Integer;
   tmp: TCellKind;
 begin
-  // Fisher-Yates Shuffle für die 7 Elemente
+  // Fisher-Yates shuffle for 7 elements
   for i := 6 downto 1 do
   begin
     j := Random(i + 1); // 0..i
@@ -1903,25 +1910,26 @@ procedure TForm1.RefillBag;
 var
   i: Integer;
 begin
-  // Fülle Bag mit den 7 Tetromino-Typen (ckI..ckL)
+  // Fill Bag with the 7 Tetromino types (ckI..ckL)
   for i := 0 to 6 do
     FBag[i] := TCellKind(Ord(ckI) + i);
-  // Mische
+
+  // Mix it!
   ShuffleBag;
   FBagIndex := 0;
 end;
 
 function TForm1.DrawFromBag: TCellKind;
 begin
-  // Wenn Bag leer (Index > 6), refill
+  // If the bag is empty (Index > 6), refill it
   if FBagIndex > 6 then
     RefillBag;
 
   Result := FBag[FBagIndex];
   Inc(FBagIndex);
 
-  // Wenn wir gerade das letzte Element herausgenommen haben,
-  // bereite sofort eine neue Bag vor (optional)
+  // If we just removed the last element,
+  // immediately prepare a new bag (optional)
   if FBagIndex > 6 then
     RefillBag;
 end;
@@ -1932,18 +1940,17 @@ var
   cube: TGorillaMeshInstance;
   amp, baseFreq: TVector3D;
 begin
-  // Parameter: Dauer und Anzahl der kompletten Schwingungen (Hin+Her = 1 Oscillation)
-  FShakeDuration := 0.5;      // Gesamtdauer in Sekunden (länger, damit mehrere Schwingungen sichtbar sind)
-  FShakeOscillations := 4;    // Anzahl voller Hin-/Her-Schwingungen
+  // Parameters: Duration and number of complete oscillations (back+forth = 1 oscillation)
+  FShakeDuration := 0.5;      // Total duration in seconds (longer to allow multiple oscillations to be visible)
+  FShakeOscillations := 4;    // Number of full back/forth oscillations
   FShakeTimer := 0;
   FIsShaking := True;
 
-  // Sammle alle sichtbaren/abgelegten Würfel in ein Array
+  // Collect all visible/discarded dice into an array
   SetLength(FShakingCubes, 0);
   for y := 0 to ROWS - 1 do
     for x := 0 to COLS - 1 do
       if (FBoard[y, x] <> ckNone) and Assigned(FCubes[y, x]) then
-//      and FCubes[FActiveBoardSide, y, x].Visible then
       begin
         idx := Length(FShakingCubes);
         SetLength(FShakingCubes, idx + 1);
@@ -1961,46 +1968,48 @@ begin
     cube := FShakingCubes[idx];
     if Assigned(cube) then
     begin
-      // original position merken
+      // Store the original position
       FShakeOrigPos[idx] := cube.Position.Point;
 
-      // amplituden: etwas zufällig, ggf. vom Benutzer hochskaliert (du hast *3 verwendet)
+      // Amplitudes: somewhat random, possibly scaled up by the user
       amp := Vector3D(
-        (RandomRange(8, 36) / 100.0),  // X-Amplitude (0.08..0.36)
-        (RandomRange(4, 18) / 100.0),  // Y-Amplitude
-        (RandomRange(0, 12) / 100.0)   // Z-Amplitude
+        (RandomRange(8, 36) / 100.0),  // X amplitude (0.08..0.36)
+        (RandomRange(4, 18) / 100.0),  // Y amplitude
+        (RandomRange(0, 12) / 100.0)   // Z amplitude
       );
-      // Optional: hier die Werte um 3 multiplizieren, wenn du es extra stark willst:
+
+      // Optional: multiply the values â€‹â€‹by 3 here if you want it extra strong:
       // amp := Vector3D(amp.X * 3, amp.Y * 3, amp.Z * 3);
       FShakeAmplitudes[idx] := amp;
 
-      // Basisfrequenz in Hz (wird zusammen mit FShakeOscillations verwendet)
-      // Wir wählen moderate Basen, Variation pro Würfel
+      // Base frequency in Hz (used together with FShakeOscillations)
+      // We choose moderate bases, variation per cube
       baseFreq := Vector3D(
         RandomRange(8, 14) / 10.0, // 0.8..1.4
         RandomRange(8, 14) / 10.0,
         RandomRange(8, 14) / 10.0
       );
-      // Wenn du bereits überall *3 multipliziert hast, das ergibt stärkere, schnellere Bewegung.
-      // baseFreq := baseFreq * 3; // falls gewünscht (du hattest x3)
+
+      // If you've already multiplied by 3 everywhere, this results in stronger, faster movement.
+      // baseFreq := baseFreq * 3; // if desired (you had x3)
       FShakeBaseFreqs[idx] := baseFreq;
     end;
   end;
 
-  // Optionale Kameravariation pro-Shake: leichte Zufallskomponenten
+  // Optional camera variation per-Shake: slight random components
   if FCameraShakeEnabled and Assigned(FCamera) then
   begin
-    // Merke die Originalposition (erneut, falls sie sich zwischen Spawns verändert hat)
+    // Remember the original position (again if it has changed between spawns)
     FCameraOrigPos := FCamera.Position.Point;
 
-    // Optional: leichte zufällige Skalierung der Kamera-Amplitude (Variation)
+    // Optional: slight random scaling of the camera amplitude (variation)
     FCameraShakeAmplitude := Vector3D(
       FCameraShakeAmplitude.X * (0.9 + RandomRange(0,20)/100),
       FCameraShakeAmplitude.Y * (0.9 + RandomRange(0,20)/100),
       FCameraShakeAmplitude.Z
     );
 
-    // Optional: Basisfrequenzen leicht variieren
+    // Optional: Vary base frequencies slightly
     FCameraShakeBaseFreq := Vector3D(
       FCameraShakeBaseFreq.X * (0.9 + RandomRange(0,20)/100),
       FCameraShakeBaseFreq.Y * (0.9 + RandomRange(0,20)/100),
@@ -2018,22 +2027,19 @@ var
 begin
   if Length(FRemovedLines) = 0 then Exit;
 
-  // 1) Markiere entfernte Linien
+  // 1) Mark removed lines
   FillChar(removedFlag, SizeOf(removedFlag), 0);
   for y in FRemovedLines do
     if (y >= 0) and (y < ROWS) then
       removedFlag[y] := True;
 
-  // 2) Lösche die Linien sofort im Board
+  // 2) Deletes the lines immediately in board
   for y in FRemovedLines do
     for x := 0 to COLS-1 do
     begin
       FBoard[y, x] := ckNone;
       if Assigned(FCubes[y, x]) then
-      begin
-        //FCubes[y, x].Visible := False;
         FCubes[y, x] := nil;
-      end;
     end;
 
   SetLength(FDroppingCubes, 0);
@@ -2041,7 +2047,7 @@ begin
   SetLength(FDropEndPos, 0);
   SetLength(FDropDelay, 0);
 
-  // 3) Drop nur für Würfel oberhalb gelöschter Linien
+  // 3) Drop only for dice above deleted lines
   for x := 0 to COLS - 1 do
   begin
     dropCount := 0;
@@ -2059,7 +2065,7 @@ begin
         if Assigned(cube) and (dropCount > 0) then
         begin
           startPos := cube.Position.Point;
-          endPos := Point3D(startPos.X, startPos.Y + dropCount, startPos.Z); // nur fallen um dropCount
+          endPos := Point3D(startPos.X, startPos.Y + dropCount, startPos.Z);
 
           idx := Length(FDroppingCubes);
           SetLength(FDroppingCubes, idx + 1);
@@ -2072,7 +2078,7 @@ begin
           FDropEndPos[idx] := endPos;
           FDropDelay[idx] := Random * 0.18;
 
-          // Board sofort aktualisieren
+          // Update board immediately
           FBoard[y + dropCount, x] := FBoard[y, x];
           FCubes[y + dropCount, x] := cube;
 
