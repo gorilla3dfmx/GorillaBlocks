@@ -203,6 +203,7 @@ type
     procedure StartDropAnimation;
 
     procedure DoOnTick(Sender: TObject);
+    procedure Refresh();
 
     procedure HandleGameOver;
     procedure Clear();
@@ -891,7 +892,10 @@ begin
 
   // if GameOver is set, no more game logic, but finish the animation
   if FGameOver and not FIsAnimating then
+  begin
+    Refresh();
     Exit;
+  end;
 
   // If animation is running, only handle this one and exit
   if FIsAnimating then
@@ -986,6 +990,7 @@ begin
       StartDropAnimation;
     end;
 
+    Refresh();
     Exit;
   end;
 
@@ -1086,6 +1091,7 @@ begin
       end;
     end;
 
+    Refresh();
     Exit; // While shake no more game logic
   end;
 
@@ -1148,6 +1154,7 @@ begin
         SpawnPiece;
     end;
 
+    Refresh();
     Exit; // While dropping no more gravitation or inputs
   end;
 
@@ -1215,8 +1222,18 @@ begin
     end;
   end;
 
+  Refresh();
+end;
+
+procedure TForm1.Refresh();
+begin
 {$IFDEF ANDROID}
   // Because Android rendering is event-based - we need to invalidate the scene
+  // on each tick
+  FGorilla.Invalidate();
+{$ENDIF}
+{$IFDEF LINUX}
+  // Because Linux rendering is event-based - we need to invalidate the scene
   // on each tick
   FGorilla.Invalidate();
 {$ENDIF}
