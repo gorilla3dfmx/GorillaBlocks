@@ -1,9 +1,9 @@
-# 🦍 GorillaTetris - The Classic Block Puzzle in Stunning 3D
+# 🦍 GorillaBlocks - The Classic Block Puzzle in Stunning 3D
 
-GorillaTetris is a mostly vibe coded **open-source 3D clone** of the timeless block-stacking puzzle game, built using the powerful **Gorilla3D** rendering engine. 
-Experience Tetris like never before with modern graphical effects and optimized performance.
+GorillaBlocks is a mostly vibe coded **open-source 3D clone** of the timeless block-stacking puzzle game, built using the powerful **Gorilla3D** rendering engine. 
+Experience the famous game from the 80s like never before with modern graphical effects and optimized performance.
 
-![Tetris Game Title](Title.png)
+![GorillaBlocks Game Title](Title.png)
 
 ***
 
@@ -16,13 +16,13 @@ This project serves as an excellent demonstration of Gorilla3D's capabilities, u
 * **Shader Coding:** Custom shaders are implemented to achieve unique visual effects.
 * **Mesh Instancing:** Optimizes rendering performance by drawing multiple identical blocks with a single draw call.
 
-![Tetris Game Screenshot](Screenshot.jpg)
+![GorillaBlocks Game Screenshot](Screenshot.jpg)
 
 ***
 
 ## 🎮 Controls and Input
 
-GorillaTetris supports both traditional keyboard input for desktop platforms and intuitive touch gestures for Android devices.
+GorillaBlocks supports both traditional keyboard input for desktop platforms and intuitive touch gestures for Android devices.
 
 ### Keyboard Controls (Desktop)
 
@@ -59,7 +59,7 @@ This project requires the **Gorilla3D** framework to compile and run.
 
 ## 💻 Platform Support
 
-GorillaTetris is designed for cross-platform play and supports the following targets:
+GorillaBlocks is designed for cross-platform play and supports the following targets:
 
 * **Windows:** 32-bit and 64-bit
 * **Android:** 32-bit and 64-bit
