@@ -11,9 +11,9 @@
     </PropertyGroup>
     <ItemGroup Condition="'$(Platform)'=='OSX64'"/>
     <ItemGroup Condition="'$(Platform)'=='Win32'">
-        <DeployFile Include="Win32\Debug\GorillaTetris.exe" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
-            <RemoteName>GorillaTetris.exe</RemoteName>
+        <DeployFile Include="Win32\Debug\GorillaBlocks.exe" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>GorillaBlocks\</RemoteDir>
+            <RemoteName>GorillaBlocks.exe</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>0</Operation>
             <LocalCommand/>
@@ -24,7 +24,7 @@
     </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='Android64'">
         <DeployFile Include="Android64\Release\strings.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>strings.xml</RemoteName>
             <DeployClass>Android_Strings</DeployClass>
             <Operation>1</Operation>
@@ -33,7 +33,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\splash_image_def.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>splash_image_def.xml</RemoteName>
             <DeployClass>AndroidSplashImageDef</DeployClass>
             <Operation>1</Operation>
@@ -42,7 +42,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -51,7 +51,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -60,7 +60,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_470x320.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-normal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-normal\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage470</DeployClass>
             <Operation>1</Operation>
@@ -69,7 +69,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_470x320.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-normal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-normal\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage470</DeployClass>
             <Operation>1</Operation>
@@ -78,8 +78,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\mips\libnative-activity.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\mips\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\mips\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeMipsFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -87,8 +87,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\mips\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\mips\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\mips\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeMipsFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -96,8 +96,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\armeabi-v7a\libnative-activity.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi-v7a\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeArmeabiv7aFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -105,7 +105,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\armeabi\libfmodL.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -114,7 +114,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\armeabi\libfmodL.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -123,7 +123,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\styles-v21.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v21\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV21</DeployClass>
             <Operation>1</Operation>
@@ -132,8 +132,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\armeabi-v7a\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi-v7a\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeArmeabiv7aFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -141,7 +141,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\styles.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStyles</DeployClass>
             <Operation>1</Operation>
@@ -150,7 +150,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_24x24.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon24</DeployClass>
             <Operation>1</Operation>
@@ -159,7 +159,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.jpg" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Skybox.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -168,7 +168,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.jpg" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Skybox.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -177,7 +177,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_24x24.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon24</DeployClass>
             <Operation>1</Operation>
@@ -186,7 +186,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\ic_launcher.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v26\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v26\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIcon</DeployClass>
             <Operation>1</Operation>
@@ -195,7 +195,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -204,7 +204,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -213,7 +213,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\ic_launcher-v33.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v33\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v33\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconV33</DeployClass>
             <Operation>1</Operation>
@@ -222,7 +222,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\colors-night-v21.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values-night-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-night-v21\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_ColorsDark</DeployClass>
             <Operation>1</Operation>
@@ -231,7 +231,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -240,7 +240,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -249,7 +249,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\styles-v35.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-v35\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v35\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV35</DeployClass>
             <Operation>1</Operation>
@@ -258,7 +258,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\AndroidManifest.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>AndroidManifest.xml</RemoteName>
             <DeployClass>ProjectAndroidManifest</DeployClass>
             <Operation>1</Operation>
@@ -266,9 +266,9 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="Android64\Debug\libGorillaTetris.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\arm64-v8a\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+        <DeployFile Include="Android64\Debug\libGorillaBlocks.so" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>GorillaBlocks\library\lib\arm64-v8a\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -277,7 +277,7 @@
             <Required>True</Required>
         </DeployFile>
         <DeployFile Include="Android64\Debug\colors-night-v21.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-night-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-night-v21\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_ColorsDark</DeployClass>
             <Operation>1</Operation>
@@ -286,8 +286,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\armeabi\libnative-activity.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeArmeabiFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -295,8 +295,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\armeabi\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeArmeabiFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -304,7 +304,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\colors.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_Colors</DeployClass>
             <Operation>1</Operation>
@@ -312,9 +312,9 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="Android64\Release\libGorillaTetris.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\arm64-v8a\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+        <DeployFile Include="Android64\Release\libGorillaBlocks.so" Condition="'$(Config)'=='Release'">
+            <RemoteDir>GorillaBlocks\library\lib\arm64-v8a\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -323,7 +323,7 @@
             <Required>True</Required>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_640x480.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-large\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-large\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage640</DeployClass>
             <Operation>1</Operation>
@@ -332,7 +332,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_640x480.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-large\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-large\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage640</DeployClass>
             <Operation>1</Operation>
@@ -341,7 +341,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Monochrome.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_monochrome.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconMonochrome</DeployClass>
             <Operation>1</Operation>
@@ -350,7 +350,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Monochrome.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_monochrome.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconMonochrome</DeployClass>
             <Operation>1</Operation>
@@ -359,7 +359,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_96x96.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon96</DeployClass>
             <Operation>1</Operation>
@@ -368,7 +368,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_96x96.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon96</DeployClass>
             <Operation>1</Operation>
@@ -377,7 +377,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\strings.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>strings.xml</RemoteName>
             <DeployClass>Android_Strings</DeployClass>
             <Operation>1</Operation>
@@ -386,7 +386,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\arm64-v8a\libfmodL.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\arme64-v8a\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\arme64-v8a\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -395,7 +395,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\arm64-v8a\libfmodL.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\arme64-v8a\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\arme64-v8a\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -404,7 +404,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\ic_launcher.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v26\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v26\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIcon</DeployClass>
             <Operation>1</Operation>
@@ -413,7 +413,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\colors.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_Colors</DeployClass>
             <Operation>1</Operation>
@@ -422,7 +422,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_960x720.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xlarge\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xlarge\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage960</DeployClass>
             <Operation>1</Operation>
@@ -431,7 +431,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_960x720.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xlarge\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xlarge\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage960</DeployClass>
             <Operation>1</Operation>
@@ -440,7 +440,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_96x96.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon96</DeployClass>
             <Operation>1</Operation>
@@ -449,7 +449,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_96x96.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon96</DeployClass>
             <Operation>1</Operation>
@@ -458,7 +458,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_48x48.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon48</DeployClass>
             <Operation>1</Operation>
@@ -467,7 +467,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_48x48.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon48</DeployClass>
             <Operation>1</Operation>
@@ -476,7 +476,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_144x144.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon144</DeployClass>
             <Operation>1</Operation>
@@ -485,7 +485,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_48x48.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon48</DeployClass>
             <Operation>1</Operation>
@@ -494,7 +494,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_48x48.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon48</DeployClass>
             <Operation>1</Operation>
@@ -503,7 +503,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Foreground.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_foreground.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconForeground</DeployClass>
             <Operation>1</Operation>
@@ -512,7 +512,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_144x144.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon144</DeployClass>
             <Operation>1</Operation>
@@ -521,7 +521,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Foreground.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_foreground.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconForeground</DeployClass>
             <Operation>1</Operation>
@@ -530,7 +530,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\ic_launcher-v33.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v33\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v33\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconV33</DeployClass>
             <Operation>1</Operation>
@@ -539,7 +539,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_36x36.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-ldpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-ldpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon36</DeployClass>
             <Operation>1</Operation>
@@ -548,7 +548,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_36x36.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-ldpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-ldpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon36</DeployClass>
             <Operation>1</Operation>
@@ -557,7 +557,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Background.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_background.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconBackground</DeployClass>
             <Operation>1</Operation>
@@ -566,7 +566,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_AdaptiveIcon_Background.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_background.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconBackground</DeployClass>
             <Operation>1</Operation>
@@ -575,7 +575,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_72x72.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon72</DeployClass>
             <Operation>1</Operation>
@@ -584,7 +584,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_72x72.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon72</DeployClass>
             <Operation>1</Operation>
@@ -593,7 +593,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_426x320.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-small\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-small\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage426</DeployClass>
             <Operation>1</Operation>
@@ -602,7 +602,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_SplashImage_426x320.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-small\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-small\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage426</DeployClass>
             <Operation>1</Operation>
@@ -611,7 +611,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_72x72.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon72</DeployClass>
             <Operation>1</Operation>
@@ -620,7 +620,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_72x72.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon72</DeployClass>
             <Operation>1</Operation>
@@ -629,7 +629,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_192x192.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon192</DeployClass>
             <Operation>1</Operation>
@@ -638,7 +638,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_192x192.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon192</DeployClass>
             <Operation>1</Operation>
@@ -647,7 +647,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\AndroidManifest.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>AndroidManifest.xml</RemoteName>
             <DeployClass>ProjectAndroidManifest</DeployClass>
             <Operation>1</Operation>
@@ -656,7 +656,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\splash_image_def.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>splash_image_def.xml</RemoteName>
             <DeployClass>AndroidSplashImageDef</DeployClass>
             <Operation>1</Operation>
@@ -665,7 +665,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\styles.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStyles</DeployClass>
             <Operation>1</Operation>
@@ -674,7 +674,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_36x36.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon36</DeployClass>
             <Operation>1</Operation>
@@ -683,7 +683,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_NotificationIcon_36x36.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon36</DeployClass>
             <Operation>1</Operation>
@@ -692,7 +692,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Release\styles-v35.xml" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\res\values-v35\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v35\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV35</DeployClass>
             <Operation>1</Operation>
@@ -701,7 +701,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android64\Debug\styles-v21.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v21\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV21</DeployClass>
             <Operation>1</Operation>
@@ -710,7 +710,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -719,7 +719,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -728,7 +728,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\armeabi-v7a\libfmodL.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi-v7a\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -737,7 +737,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\android\armeabi-v7a\libfmodL.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi-v7a\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -748,7 +748,7 @@
     </ItemGroup>
     <ItemGroup Condition="'$(Platform)'=='Android'">
         <DeployFile Include="Android\Debug\colors.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_Colors</DeployClass>
             <Operation>1</Operation>
@@ -757,7 +757,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_72x72.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon72</DeployClass>
             <Operation>1</Operation>
@@ -766,7 +766,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -775,7 +775,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -784,7 +784,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\ic_launcher-v33.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v33\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v33\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconV33</DeployClass>
             <Operation>1</Operation>
@@ -793,7 +793,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_36x36.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-ldpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-ldpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon36</DeployClass>
             <Operation>1</Operation>
@@ -802,7 +802,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -811,7 +811,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -820,7 +820,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_AdaptiveIcon_Background.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_background.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconBackground</DeployClass>
             <Operation>1</Operation>
@@ -829,7 +829,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_SplashImage_470x320.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-normal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-normal\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage470</DeployClass>
             <Operation>1</Operation>
@@ -838,7 +838,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_NotificationIcon_72x72.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon72</DeployClass>
             <Operation>1</Operation>
@@ -847,7 +847,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_144x144.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon144</DeployClass>
             <Operation>1</Operation>
@@ -856,7 +856,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_192x192.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon192</DeployClass>
             <Operation>1</Operation>
@@ -865,7 +865,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_96x96.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon96</DeployClass>
             <Operation>1</Operation>
@@ -874,7 +874,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\AndroidManifest.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>AndroidManifest.xml</RemoteName>
             <DeployClass>ProjectAndroidManifest</DeployClass>
             <Operation>1</Operation>
@@ -883,7 +883,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\styles.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStyles</DeployClass>
             <Operation>1</Operation>
@@ -892,7 +892,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -901,7 +901,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -910,7 +910,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -919,7 +919,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -928,7 +928,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_NotificationIcon_24x24.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon24</DeployClass>
             <Operation>1</Operation>
@@ -937,8 +937,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\mips\libnative-activity.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\mips\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\mips\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeMipsFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -946,7 +946,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_SplashImage_426x320.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-small\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-small\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage426</DeployClass>
             <Operation>1</Operation>
@@ -955,7 +955,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\styles-v35.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-v35\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v35\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV35</DeployClass>
             <Operation>1</Operation>
@@ -964,7 +964,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_SplashImage_640x480.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-large\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-large\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage640</DeployClass>
             <Operation>1</Operation>
@@ -973,7 +973,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\strings.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values\</RemoteDir>
             <RemoteName>strings.xml</RemoteName>
             <DeployClass>Android_Strings</DeployClass>
             <Operation>1</Operation>
@@ -982,7 +982,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\splash_image_def.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>splash_image_def.xml</RemoteName>
             <DeployClass>AndroidSplashImageDef</DeployClass>
             <Operation>1</Operation>
@@ -991,7 +991,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_AdaptiveIcon_Monochrome.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_monochrome.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconMonochrome</DeployClass>
             <Operation>1</Operation>
@@ -1000,7 +1000,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_LauncherIcon_48x48.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-mdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-mdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
             <DeployClass>Android_LauncherIcon48</DeployClass>
             <Operation>1</Operation>
@@ -1009,7 +1009,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_SplashImage_960x720.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xlarge\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xlarge\</RemoteDir>
             <RemoteName>splash_image.png</RemoteName>
             <DeployClass>Android_SplashImage960</DeployClass>
             <Operation>1</Operation>
@@ -1018,7 +1018,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Skybox.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1027,7 +1027,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Skybox.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1036,7 +1036,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_NotificationIcon_48x48.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon48</DeployClass>
             <Operation>1</Operation>
@@ -1045,7 +1045,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\styles-v21.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-v21\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
             <DeployClass>AndroidSplashStylesV21</DeployClass>
             <Operation>1</Operation>
@@ -1054,7 +1054,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_AdaptiveIcon_Foreground.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_foreground.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconForeground</DeployClass>
             <Operation>1</Operation>
@@ -1063,8 +1063,8 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\lib\android\debug\armeabi\libnative-activity.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+            <RemoteDir>GorillaBlocks\library\lib\armeabi\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>AndroidLibnativeArmeabiFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -1072,7 +1072,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_NotificationIcon_36x36.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-hdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon36</DeployClass>
             <Operation>1</Operation>
@@ -1081,7 +1081,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\ic_launcher.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-anydpi-v26\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-anydpi-v26\</RemoteDir>
             <RemoteName>ic_launcher.xml</RemoteName>
             <DeployClass>Android_AdaptiveIcon</DeployClass>
             <Operation>1</Operation>
@@ -1090,7 +1090,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Android\Debug\colors-night-v21.xml" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\values-night-v21\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\values-night-v21\</RemoteDir>
             <RemoteName>colors.xml</RemoteName>
             <DeployClass>Android_ColorsDark</DeployClass>
             <Operation>1</Operation>
@@ -1099,7 +1099,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="$(BDS)\bin\Artwork\Android\FM_NotificationIcon_96x96.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\res\drawable-xxxhdpi\</RemoteDir>
+            <RemoteDir>GorillaBlocks\res\drawable-xxxhdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon96</DeployClass>
             <Operation>1</Operation>
@@ -1108,7 +1108,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Banner.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Banner.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1117,7 +1117,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Banner.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>Banner.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1125,9 +1125,9 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="Android\Debug\libGorillaTetris.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\library\lib\armeabi-v7a\</RemoteDir>
-            <RemoteName>libGorillaTetris.so</RemoteName>
+        <DeployFile Include="Android\Debug\libGorillaBlocks.so" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>GorillaBlocks\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteName>libGorillaBlocks.so</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -1136,7 +1136,7 @@
             <Required>True</Required>
         </DeployFile>
         <DeployFile Include="GameOverWin.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>GameOverWin.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1145,7 +1145,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="GameOverWin.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\assets\internal\</RemoteDir>
+            <RemoteDir>GorillaBlocks\assets\internal\</RemoteDir>
             <RemoteName>GameOverWin.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1161,7 +1161,7 @@
     <ItemGroup Condition="'$(Platform)'=='Win64x'"/>
     <ItemGroup Condition="'$(Platform)'=='Linux64'">
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1170,7 +1170,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="row_clear.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>row_clear.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1179,7 +1179,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.png" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Skybox.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1188,7 +1188,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.png" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Skybox.png</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1197,7 +1197,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.jpg" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Skybox.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1206,7 +1206,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Skybox.jpg" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Skybox.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1215,7 +1215,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so.10" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so.10</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1224,7 +1224,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so.10" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so.10</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1233,7 +1233,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1242,7 +1242,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="Floor.jpg" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>Floor.jpg</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1251,7 +1251,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1260,7 +1260,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="tetris_style.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>tetris_style.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1269,7 +1269,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so.10.8" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so.10.8</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1278,7 +1278,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so.10.8" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so.10.8</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1287,7 +1287,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1296,7 +1296,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="harddrop_thud.wav" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>harddrop_thud.wav</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1305,7 +1305,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1314,7 +1314,7 @@
             <Overwrite>True</Overwrite>
         </DeployFile>
         <DeployFile Include="..\..\source\packages\lib\fmod\linux\x86_64\libfmodL.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
+            <RemoteDir>GorillaBlocks\</RemoteDir>
             <RemoteName>libfmodL.so</RemoteName>
             <DeployClass>File</DeployClass>
             <Operation>0</Operation>
@@ -1322,9 +1322,9 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="Linux64\Debug\GorillaTetris" Condition="'$(Config)'=='Debug'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
-            <RemoteName>GorillaTetris</RemoteName>
+        <DeployFile Include="Linux64\Debug\GorillaBlocks" Condition="'$(Config)'=='Debug'">
+            <RemoteDir>GorillaBlocks\</RemoteDir>
+            <RemoteName>GorillaBlocks</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
@@ -1332,9 +1332,9 @@
             <Overwrite>True</Overwrite>
             <Required>True</Required>
         </DeployFile>
-        <DeployFile Include="Linux64\Release\GorillaTetris" Condition="'$(Config)'=='Release'">
-            <RemoteDir>GorillaTetris\</RemoteDir>
-            <RemoteName>GorillaTetris</RemoteName>
+        <DeployFile Include="Linux64\Release\GorillaBlocks" Condition="'$(Config)'=='Release'">
+            <RemoteDir>GorillaBlocks\</RemoteDir>
+            <RemoteName>GorillaBlocks</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>

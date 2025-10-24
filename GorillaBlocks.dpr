@@ -1,4 +1,4 @@
-program GorillaTetris;
+program GorillaBlocks;
 
 uses
   System.StartUpCopy,

@@ -22,7 +22,7 @@ uses
   Gorilla.Material.Default, Gorilla.Mesh, Gorilla.Cube, Gorilla.Plane,
   Gorilla.DefTypes, Gorilla.Material.Lambert, Gorilla.Material.Blinn;
 
-// Basic Tetris constants so CreateGorillaScene compiles (board center usage)
+// Basic constants so CreateGorillaScene compiles (board center usage)
 const
   ROWS       = 20;   // Number of rows in the gaming field
   COLS       = 10;   // Number of columns in the gaming field
@@ -459,7 +459,7 @@ begin
 {$IFDEF AUDIO}
   FAudioPlayer := TGorillaFMODAudioManager.Create(Self);
   FAudioPlayer.AutoUpdate := true;
-  var LSoundItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'tetris_style.wav');
+  var LSoundItem := FAudioPlayer.LoadSoundItemFromFile(FAssetsPath + 'blocks_style.wav');
   LSoundItem.Loop := true;
   LSoundItem.LoopCount := -1;
   LSoundItem.Play();
